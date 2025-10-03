@@ -1,0 +1,303 @@
+====================================================================
+                    QUEUE, STACK, DEQUE IN JAVA
+====================================================================
+
+INTRODUCTION:
+Queue, Stack, and Deque are important data structures that provide specific ordering and access patterns. Queue follows FIFO (First In, First Out), Stack follows LIFO (Last In, First Out), and Deque (Double-ended queue) allows insertion and removal from both ends.
+
+KEY CONCEPTS:
+
+1. QUEUE INTERFACE:
+   - FIFO ordering (First In, First Out)
+   - Elements added at rear, removed from front
+   - Main implementations: LinkedList, ArrayDeque, PriorityQueue
+   - Key methods: offer(), poll(), peek()
+
+2. STACK CLASS:
+   - LIFO ordering (Last In, First Out)
+   - Legacy class (use Deque instead)
+   - Elements added and removed from top
+   - Key methods: push(), pop(), peek()
+
+3. DEQUE INTERFACE:
+   - Double-ended queue
+   - Insertion and removal at both ends
+   - Can be used as Queue or Stack
+   - Main implementations: ArrayDeque, LinkedList
+   - Preferred over Stack class
+
+4. PRIORITYQUEUE:
+   - Elements ordered by priority (natural order or Comparator)
+   - Min-heap implementation
+   - Not FIFO, but priority-based
+   - Does not allow null elements
+
+5. ARRAYDEQUE:
+   - Resizable array implementation of Deque
+   - More efficient than LinkedList for most operations
+   - Not thread-safe
+   - Preferred implementation for stack and queue operations
+
+EXAMPLE CODE:
+
+// Queue using LinkedList
+Queue<String> queue = new LinkedList<>();
+queue.offer("First");    // Add to rear
+queue.offer("Second");
+queue.offer("Third");
+
+String front = queue.peek();  // Look at front without removing
+String removed = queue.poll(); // Remove from front
+// Order: First out, Second, Third
+
+// Queue using ArrayDeque (preferred)
+Queue<Integer> arrayQueue = new ArrayDeque<>();
+arrayQueue.offer(1);
+arrayQueue.offer(2);
+arrayQueue.offer(3);
+
+// PriorityQueue example
+PriorityQueue<Integer> pq = new PriorityQueue<>();
+pq.offer(30);
+pq.offer(10);
+pq.offer(20);
+System.out.println(pq.poll()); // Output: 10 (smallest first)
+
+// PriorityQueue with custom comparator
+PriorityQueue<String> maxHeap = new PriorityQueue<>((a, b) -> b.compareTo(a));
+maxHeap.offer("Apple");
+maxHeap.offer("Zebra");
+maxHeap.offer("Mango");
+System.out.println(maxHeap.poll()); // Output: Zebra
+
+// Stack using Stack class (legacy)
+Stack<String> stack = new Stack<>();
+stack.push("Bottom");
+stack.push("Middle");
+stack.push("Top");
+
+String top = stack.peek();    // Look at top
+String popped = stack.pop();  // Remove from top
+// Order: Top out, Middle, Bottom
+
+// Stack using Deque (preferred approach)
+Deque<String> stackDeque = new ArrayDeque<>();
+stackDeque.push("Bottom");    // addFirst()
+stackDeque.push("Middle");
+stackDeque.push("Top");
+
+String topElement = stackDeque.peek();  // peekFirst()
+String poppedElement = stackDeque.pop(); // removeFirst()
+
+// Deque operations
+Deque<Integer> deque = new ArrayDeque<>();
+
+// Add elements
+deque.addFirst(1);    // Add to front
+deque.addLast(2);     // Add to rear
+deque.offerFirst(0);  // Add to front (safe)
+deque.offerLast(3);   // Add to rear (safe)
+// Deque: [0, 1, 2, 3]
+
+// Remove elements
+int first = deque.removeFirst();   // Remove from front
+int last = deque.removeLast();     // Remove from rear
+int frontSafe = deque.pollFirst(); // Remove from front (safe)
+int rearSafe = deque.pollLast();   // Remove from rear (safe)
+
+// Peek operations
+int peekFirst = deque.peekFirst(); // Look at front
+int peekLast = deque.peekLast();   // Look at rear
+
+// Using Deque as Queue
+Deque<String> queueDeque = new ArrayDeque<>();
+queueDeque.offerLast("First");   // Enqueue
+queueDeque.offerLast("Second");
+String frontItem = queueDeque.pollFirst(); // Dequeue
+
+// Using Deque as Stack
+Deque<String> stackDeque2 = new ArrayDeque<>();
+stackDeque2.offerFirst("Bottom"); // Push
+stackDeque2.offerFirst("Top");
+String topItem = stackDeque2.pollFirst(); // Pop
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What ordering does Queue follow?
+   a) LIFO
+   b) FIFO
+   c) Random
+   d) Sorted
+   Answer: b) FIFO
+
+2. What ordering does Stack follow?
+   a) FIFO
+   b) LIFO
+   c) Random
+   d) Sorted
+   Answer: b) LIFO
+
+3. Which method adds element to Queue?
+   a) add()
+   b) offer()
+   c) Both a and b
+   d) insert()
+   Answer: c) Both a and b
+
+4. Which method removes element from Queue?
+   a) remove()
+   b) poll()
+   c) Both a and b
+   d) delete()
+   Answer: c) Both a and b
+
+5. What's the difference between poll() and remove() in Queue?
+   a) No difference
+   b) poll() throws exception if empty, remove() returns null
+   c) remove() throws exception if empty, poll() returns null
+   d) poll() is faster
+   Answer: c) remove() throws exception if empty, poll() returns null
+
+6. Which method adds element to Stack?
+   a) add()
+   b) push()
+   c) offer()
+   d) insert()
+   Answer: b) push()
+
+7. Which method removes element from Stack?
+   a) remove()
+   b) pop()
+   c) poll()
+   d) delete()
+   Answer: b) pop()
+
+8. What does peek() method do in Stack?
+   a) Removes top element
+   b) Adds element to top
+   c) Returns top element without removing
+   d) Checks if stack is empty
+   Answer: c) Returns top element without removing
+
+9. Which is the preferred implementation for Deque?
+   a) LinkedList
+   b) ArrayDeque
+   c) ArrayList
+   d) Vector
+   Answer: b) ArrayDeque
+
+10. What does Deque stand for?
+    a) Decimal Queue
+    b) Double-ended queue
+    c) Duplicate queue
+    d) Dynamic queue
+    Answer: b) Double-ended queue
+
+11. Which data structure does PriorityQueue implement internally?
+    a) Array
+    b) Linked List
+    c) Heap
+    d) Tree
+    Answer: c) Heap
+
+12. What is the default ordering in PriorityQueue?
+    a) FIFO
+    b) LIFO
+    c) Natural ordering (min-heap)
+    d) Insertion order
+    Answer: c) Natural ordering (min-heap)
+
+13. Can PriorityQueue contain null elements?
+    a) Yes, unlimited nulls
+    b) Yes, only one null
+    c) No, null not allowed
+    d) Only with custom comparator
+    Answer: c) No, null not allowed
+
+14. Which method adds element to front of Deque?
+    a) addFirst()
+    b) addFront()
+    c) pushFront()
+    d) insertFirst()
+    Answer: a) addFirst()
+
+15. Which method adds element to rear of Deque?
+    a) addLast()
+    b) addRear()
+    c) pushRear()
+    d) insertLast()
+    Answer: a) addLast()
+
+16. What's the difference between addFirst() and offerFirst() in Deque?
+    a) No difference in most implementations
+    b) addFirst() is safer
+    c) offerFirst() is faster
+    d) addFirst() throws exception, offerFirst() returns boolean
+    Answer: a) No difference in most implementations
+
+17. Why is ArrayDeque preferred over Stack class?
+    a) Stack is deprecated
+    b) ArrayDeque is more efficient and consistent
+    c) Stack doesn't work properly
+    d) ArrayDeque is thread-safe
+    Answer: b) ArrayDeque is more efficient and consistent
+
+18. Can Deque be used as both Queue and Stack?
+    a) No, only as Queue
+    b) No, only as Stack
+    c) Yes, as both
+    d) Depends on implementation
+    Answer: c) Yes, as both
+
+19. What happens when you call pop() on empty Stack?
+    a) Returns null
+    b) Returns 0
+    c) EmptyStackException is thrown
+    d) Nothing happens
+    Answer: c) EmptyStackException is thrown
+
+20. What happens when you call poll() on empty Queue?
+    a) Exception is thrown
+    b) Returns null
+    c) Returns 0
+    d) Blocks until element available
+    Answer: b) Returns null
+
+21. Which Queue implementation is thread-safe?
+    a) LinkedList
+    b) ArrayDeque
+    c) PriorityQueue
+    d) None of the above
+    Answer: d) None of the above
+
+22. How do you create a max-heap PriorityQueue?
+    a) new PriorityQueue<>(Collections.reverseOrder())
+    b) new PriorityQueue<>((a,b) -> b.compareTo(a))
+    c) Both a and b
+    d) Not possible
+    Answer: c) Both a and b
+
+23. What is the time complexity of offer() in PriorityQueue?
+    a) O(1)
+    b) O(log n)
+    c) O(n)
+    d) O(n log n)
+    Answer: b) O(log n)
+
+24. Which method checks if Queue is empty?
+    a) empty()
+    b) isEmpty()
+    c) isNull()
+    d) size() == 0
+    Answer: b) isEmpty()
+
+25. Can you iterate over elements in Stack?
+    a) No, not possible
+    b) Yes, using Iterator
+    c) Yes, using enhanced for loop
+    d) Both b and c
+    Answer: d) Both b and c
+
+====================================================================

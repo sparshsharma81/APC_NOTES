@@ -1,0 +1,860 @@
+====================================================================
+                        HIBERNATE TRANSACTIONS AND RELATIONSHIPS
+====================================================================
+
+INTRODUCTION:
+Hibernate is the most popular Object-Relational Mapping (ORM) framework for Java. It provides transaction management capabilities and supports various types of entity relationships. Transactions ensure data consistency and integrity, while relationships define how entities are associated with each other in the database.
+
+KEY CONCEPTS:
+
+1. TRANSACTION MANAGEMENT:
+   - ACID Properties (Atomicity, Consistency, Isolation, Durability)
+   - Transaction boundaries and lifecycle
+   - Declarative vs Programmatic transactions
+   - Transaction isolation levels
+   - Transaction propagation behavior
+
+2. HIBERNATE RELATIONSHIPS:
+   - One-to-One (@OneToOne)
+   - One-to-Many (@OneToMany)
+   - Many-to-One (@ManyToOne)
+   - Many-to-Many (@ManyToMany)
+   - Unidirectional vs Bidirectional relationships
+
+3. FETCH STRATEGIES:
+   - Lazy Loading (FetchType.LAZY)
+   - Eager Loading (FetchType.EAGER)
+   - Fetch modes and optimization
+   - N+1 problem and solutions
+
+4. CASCADE OPERATIONS:
+   - CascadeType.ALL
+   - CascadeType.PERSIST, MERGE, REMOVE, REFRESH
+   - CascadeType.DETACH
+   - Orphan removal
+
+5. ENTITY LIFECYCLE:
+   - Transient, Persistent, Detached, Removed states
+   - Session management
+   - Entity state transitions
+   - First and Second level caching
+
+EXAMPLE CODE:
+
+// Hibernate Configuration
+/*
+# application.properties
+spring.datasource.url=jdbc:mysql://localhost:3306/hibernate_demo
+spring.datasource.username=root
+spring.datasource.password=password
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.use_sql_comments=true
+
+# Transaction Configuration
+spring.jpa.properties.hibernate.connection.autocommit=false
+spring.transaction.default-timeout=30
+*/
+
+// Entity Classes with Relationships
+
+// User Entity (One-to-Many with Orders, One-to-One with UserProfile)
+@Entity
+@Table(name = "users")
+public class User {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false, unique = true)
+    private String username;
+    
+    @Column(nullable = false)
+    private String email;
+    
+    @Column(nullable = false)
+    private String password;
+    
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "created_at")
+    private Date createdAt;
+    
+    @Enumerated(EnumType.STRING)
+    private UserStatus status;
+    
+    // One-to-One relationship with UserProfile
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private UserProfile profile;
+    
+    // One-to-Many relationship with Orders
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Order> orders = new ArrayList<>();
+    
+    // Many-to-Many relationship with Roles
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "user_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<Role> roles = new HashSet<>();
+    
+    // Constructors
+    public User() {}
+    
+    public User(String username, String email, String password) {
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        this.createdAt = new Date();
+        this.status = UserStatus.ACTIVE;
+    }
+    
+    // Helper methods for relationships
+    public void addOrder(Order order) {
+        orders.add(order);
+        order.setUser(this);
+    }
+    
+    public void removeOrder(Order order) {
+        orders.remove(order);
+        order.setUser(null);
+    }
+    
+    public void addRole(Role role) {
+        roles.add(role);
+        role.getUsers().add(this);
+    }
+    
+    public void removeRole(Role role) {
+        roles.remove(role);
+        role.getUsers().remove(this);
+    }
+    
+    // Getters and setters...
+}
+
+// UserProfile Entity (One-to-One with User)
+@Entity
+@Table(name = "user_profiles")
+public class UserProfile {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(name = "first_name")
+    private String firstName;
+    
+    @Column(name = "last_name")
+    private String lastName;
+    
+    @Temporal(TemporalType.DATE)
+    @Column(name = "birth_date")
+    private Date birthDate;
+    
+    private String phone;
+    private String address;
+    private String city;
+    private String country;
+    
+    @Lob
+    private String bio;
+    
+    // One-to-One relationship with User
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+    
+    // Constructors, getters, and setters...
+}
+
+// Order Entity (Many-to-One with User, One-to-Many with OrderItems)
+@Entity
+@Table(name = "orders")
+public class Order {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(name = "order_number", unique = true, nullable = false)
+    private String orderNumber;
+    
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "order_date")
+    private Date orderDate;
+    
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status;
+    
+    @Column(name = "total_amount", precision = 10, scale = 2)
+    private BigDecimal totalAmount;
+    
+    // Many-to-One relationship with User
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+    
+    // One-to-Many relationship with OrderItems
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<OrderItem> orderItems = new ArrayList<>();
+    
+    // Constructors
+    public Order() {
+        this.orderDate = new Date();
+        this.status = OrderStatus.PENDING;
+    }
+    
+    public Order(String orderNumber, User user) {
+        this();
+        this.orderNumber = orderNumber;
+        this.user = user;
+    }
+    
+    // Helper methods
+    public void addOrderItem(OrderItem item) {
+        orderItems.add(item);
+        item.setOrder(this);
+        calculateTotalAmount();
+    }
+    
+    public void removeOrderItem(OrderItem item) {
+        orderItems.remove(item);
+        item.setOrder(null);
+        calculateTotalAmount();
+    }
+    
+    private void calculateTotalAmount() {
+        this.totalAmount = orderItems.stream()
+            .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+    
+    // Getters and setters...
+}
+
+// OrderItem Entity (Many-to-One with Order and Product)
+@Entity
+@Table(name = "order_items")
+public class OrderItem {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    private Integer quantity;
+    
+    @Column(precision = 10, scale = 2)
+    private BigDecimal price;
+    
+    // Many-to-One relationship with Order
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
+    
+    // Many-to-One relationship with Product
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
+    
+    // Constructors, getters, and setters...
+}
+
+// Product Entity (One-to-Many with OrderItems, Many-to-Many with Categories)
+@Entity
+@Table(name = "products")
+public class Product {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false)
+    private String name;
+    
+    @Lob
+    private String description;
+    
+    @Column(precision = 10, scale = 2)
+    private BigDecimal price;
+    
+    @Column(name = "stock_quantity")
+    private Integer stockQuantity;
+    
+    // One-to-Many relationship with OrderItems
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<OrderItem> orderItems = new ArrayList<>();
+    
+    // Many-to-Many relationship with Categories
+    @ManyToMany(mappedBy = "products", fetch = FetchType.LAZY)
+    private Set<Category> categories = new HashSet<>();
+    
+    // Constructors, getters, and setters...
+}
+
+// Category Entity (Many-to-Many with Products)
+@Entity
+@Table(name = "categories")
+public class Category {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false, unique = true)
+    private String name;
+    
+    private String description;
+    
+    // Many-to-Many relationship with Products
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "product_categories",
+        joinColumns = @JoinColumn(name = "category_id"),
+        inverseJoinColumns = @JoinColumn(name = "product_id")
+    )
+    private Set<Product> products = new HashSet<>();
+    
+    // Helper methods
+    public void addProduct(Product product) {
+        products.add(product);
+        product.getCategories().add(this);
+    }
+    
+    public void removeProduct(Product product) {
+        products.remove(product);
+        product.getCategories().remove(this);
+    }
+    
+    // Constructors, getters, and setters...
+}
+
+// Role Entity (Many-to-Many with Users)
+@Entity
+@Table(name = "roles")
+public class Role {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false, unique = true)
+    private String name;
+    
+    private String description;
+    
+    // Many-to-Many relationship with Users
+    @ManyToMany(mappedBy = "roles", fetch = FetchType.LAZY)
+    private Set<User> users = new HashSet<>();
+    
+    // Constructors, getters, and setters...
+}
+
+// Enums
+public enum UserStatus {
+    ACTIVE, INACTIVE, SUSPENDED, DELETED
+}
+
+public enum OrderStatus {
+    PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+}
+
+// Transaction Management Service
+@Service
+@Transactional
+public class OrderService {
+    
+    @Autowired
+    private OrderRepository orderRepository;
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Autowired
+    private ProductRepository productRepository;
+    
+    // Create order with transaction management
+    @Transactional(propagation = Propagation.REQUIRED)
+    public Order createOrder(Long userId, List<OrderItemDto> orderItems) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new UserNotFoundException("User not found: " + userId));
+        
+        Order order = new Order("ORD-" + System.currentTimeMillis(), user);
+        
+        for (OrderItemDto itemDto : orderItems) {
+            Product product = productRepository.findById(itemDto.getProductId())
+                .orElseThrow(() -> new ProductNotFoundException("Product not found: " + itemDto.getProductId()));
+            
+            // Check stock availability
+            if (product.getStockQuantity() < itemDto.getQuantity()) {
+                throw new InsufficientStockException("Insufficient stock for product: " + product.getName());
+            }
+            
+            // Create order item
+            OrderItem orderItem = new OrderItem();
+            orderItem.setProduct(product);
+            orderItem.setQuantity(itemDto.getQuantity());
+            orderItem.setPrice(product.getPrice());
+            
+            order.addOrderItem(orderItem);
+            
+            // Update product stock
+            product.setStockQuantity(product.getStockQuantity() - itemDto.getQuantity());
+        }
+        
+        return orderRepository.save(order);
+    }
+    
+    // Transaction with different isolation level
+    @Transactional(isolation = Isolation.READ_COMMITTED, timeout = 30)
+    public Order updateOrderStatus(Long orderId, OrderStatus newStatus) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId));
+        
+        OrderStatus currentStatus = order.getStatus();
+        
+        // Business logic for status transition validation
+        if (!isValidStatusTransition(currentStatus, newStatus)) {
+            throw new InvalidStatusTransitionException(
+                "Cannot change status from " + currentStatus + " to " + newStatus);
+        }
+        
+        order.setStatus(newStatus);
+        return orderRepository.save(order);
+    }
+    
+    // Read-only transaction for better performance
+    @Transactional(readOnly = true)
+    public List<Order> getUserOrders(Long userId) {
+        return orderRepository.findByUserIdWithItems(userId);
+    }
+    
+    // Transaction with rollback conditions
+    @Transactional(rollbackFor = {BusinessException.class}, 
+                   noRollbackFor = {ValidationException.class})
+    public void processOrderPayment(Long orderId, PaymentDetails paymentDetails) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId));
+        
+        try {
+            // Call external payment service
+            PaymentResult result = paymentService.processPayment(order.getTotalAmount(), paymentDetails);
+            
+            if (result.isSuccessful()) {
+                order.setStatus(OrderStatus.CONFIRMED);
+                orderRepository.save(order);
+                
+                // Send confirmation email
+                emailService.sendOrderConfirmation(order);
+            } else {
+                throw new PaymentFailedException("Payment failed: " + result.getErrorMessage());
+            }
+            
+        } catch (PaymentServiceException e) {
+            // This will cause rollback due to rollbackFor configuration
+            throw new BusinessException("Payment processing failed", e);
+        }
+    }
+    
+    // Programmatic transaction management
+    public Order createOrderProgrammatic(Long userId, List<OrderItemDto> orderItems) {
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
+        transactionTemplate.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+        transactionTemplate.setTimeout(30);
+        
+        return transactionTemplate.execute(status -> {
+            try {
+                return createOrder(userId, orderItems);
+            } catch (Exception e) {
+                status.setRollbackOnly();
+                throw new RuntimeException("Failed to create order", e);
+            }
+        });
+    }
+    
+    private boolean isValidStatusTransition(OrderStatus from, OrderStatus to) {
+        // Define valid status transitions
+        Map<OrderStatus, Set<OrderStatus>> validTransitions = Map.of(
+            OrderStatus.PENDING, Set.of(OrderStatus.CONFIRMED, OrderStatus.CANCELLED),
+            OrderStatus.CONFIRMED, Set.of(OrderStatus.PROCESSING, OrderStatus.CANCELLED),
+            OrderStatus.PROCESSING, Set.of(OrderStatus.SHIPPED, OrderStatus.CANCELLED),
+            OrderStatus.SHIPPED, Set.of(OrderStatus.DELIVERED),
+            OrderStatus.DELIVERED, Set.of(),
+            OrderStatus.CANCELLED, Set.of()
+        );
+        
+        return validTransitions.get(from).contains(to);
+    }
+}
+
+// Repository with custom queries and fetch strategies
+@Repository
+public interface OrderRepository extends JpaRepository<Order, Long> {
+    
+    // Custom query with JOIN FETCH to avoid N+1 problem
+    @Query("SELECT o FROM Order o JOIN FETCH o.user JOIN FETCH o.orderItems oi JOIN FETCH oi.product WHERE o.user.id = :userId")
+    List<Order> findByUserIdWithItems(@Param("userId") Long userId);
+    
+    // Query with specific fetch strategy
+    @Query("SELECT o FROM Order o JOIN FETCH o.orderItems WHERE o.id = :orderId")
+    Optional<Order> findByIdWithItems(@Param("orderId") Long orderId);
+    
+    // Named query example
+    @Query(name = "Order.findByStatusAndDateRange")
+    List<Order> findByStatusAndDateRange(@Param("status") OrderStatus status,
+                                       @Param("startDate") Date startDate,
+                                       @Param("endDate") Date endDate);
+    
+    // Projection query for performance
+    @Query("SELECT new com.example.dto.OrderSummaryDto(o.id, o.orderNumber, o.totalAmount, o.status) FROM Order o WHERE o.user.id = :userId")
+    List<OrderSummaryDto> findOrderSummariesByUserId(@Param("userId") Long userId);
+}
+
+// Advanced Hibernate Configuration
+@Configuration
+@EnableTransactionManagement
+public class HibernateConfig {
+    
+    @Bean
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource) {
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(dataSource);
+        em.setPackagesToScan("com.example.entity");
+        
+        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+        em.setJpaVendorAdapter(vendorAdapter);
+        
+        Properties properties = new Properties();
+        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQL8Dialect");
+        properties.setProperty("hibernate.show_sql", "true");
+        properties.setProperty("hibernate.format_sql", "true");
+        properties.setProperty("hibernate.use_sql_comments", "true");
+        properties.setProperty("hibernate.jdbc.batch_size", "25");
+        properties.setProperty("hibernate.order_inserts", "true");
+        properties.setProperty("hibernate.order_updates", "true");
+        properties.setProperty("hibernate.jdbc.batch_versioned_data", "true");
+        
+        // Second-level cache configuration
+        properties.setProperty("hibernate.cache.use_second_level_cache", "true");
+        properties.setProperty("hibernate.cache.use_query_cache", "true");
+        properties.setProperty("hibernate.cache.region.factory_class", 
+            "org.hibernate.cache.jcache.JCacheRegionFactory");
+        
+        em.setJpaProperties(properties);
+        return em;
+    }
+    
+    @Bean
+    public PlatformTransactionManager transactionManager(EntityManagerFactory emf) {
+        JpaTransactionManager transactionManager = new JpaTransactionManager();
+        transactionManager.setEntityManagerFactory(emf);
+        return transactionManager;
+    }
+}
+
+// Entity Lifecycle Callbacks
+@Entity
+@EntityListeners(AuditingEntityListener.class)
+public class AuditableEntity {
+    
+    @CreatedDate
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @LastModifiedDate
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @CreatedBy
+    @Column(name = "created_by")
+    private String createdBy;
+    
+    @LastModifiedBy
+    @Column(name = "updated_by")
+    private String updatedBy;
+    
+    @PrePersist
+    protected void onCreate() {
+        System.out.println("Entity about to be persisted: " + this.getClass().getSimpleName());
+    }
+    
+    @PostPersist
+    protected void onPersist() {
+        System.out.println("Entity persisted: " + this.getClass().getSimpleName());
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        System.out.println("Entity about to be updated: " + this.getClass().getSimpleName());
+    }
+    
+    @PostUpdate
+    protected void onPostUpdate() {
+        System.out.println("Entity updated: " + this.getClass().getSimpleName());
+    }
+    
+    @PreRemove
+    protected void onRemove() {
+        System.out.println("Entity about to be removed: " + this.getClass().getSimpleName());
+    }
+    
+    @PostRemove
+    protected void onPostRemove() {
+        System.out.println("Entity removed: " + this.getClass().getSimpleName());
+    }
+    
+    // Getters and setters...
+}
+
+// Testing Transactions and Relationships
+@SpringBootTest
+@Transactional
+@Rollback
+public class HibernateTransactionTest {
+    
+    @Autowired
+    private OrderService orderService;
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Autowired
+    private TestEntityManager testEntityManager;
+    
+    @Test
+    public void testTransactionRollback() {
+        User user = new User("testuser", "test@example.com", "password");
+        userRepository.save(user);
+        
+        List<OrderItemDto> items = Arrays.asList(
+            new OrderItemDto(999L, 1) // Non-existent product
+        );
+        
+        assertThrows(ProductNotFoundException.class, () -> {
+            orderService.createOrder(user.getId(), items);
+        });
+        
+        // Verify rollback - no orders should be created
+        assertEquals(0, user.getOrders().size());
+    }
+    
+    @Test
+    public void testLazyLoading() {
+        User user = new User("lazyuser", "lazy@example.com", "password");
+        UserProfile profile = new UserProfile();
+        profile.setFirstName("Lazy");
+        profile.setLastName("Loader");
+        profile.setUser(user);
+        user.setProfile(profile);
+        
+        User savedUser = userRepository.save(user);
+        testEntityManager.flush();
+        testEntityManager.clear();
+        
+        // Load user without profile (lazy loading)
+        User loadedUser = userRepository.findById(savedUser.getId()).orElseThrow();
+        
+        // Profile should be loaded lazily when accessed
+        assertNotNull(loadedUser.getProfile().getFirstName());
+    }
+    
+    @Test
+    public void testCascadeOperations() {
+        User user = new User("cascadeuser", "cascade@example.com", "password");
+        Order order = new Order("ORD-CASCADE", user);
+        user.addOrder(order);
+        
+        // Save user should cascade to order
+        User savedUser = userRepository.save(user);
+        
+        assertNotNull(savedUser.getOrders().get(0).getId());
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What does ACID stand for in database transactions?
+   a) Atomicity, Consistency, Isolation, Durability
+   b) Automatic, Consistent, Isolated, Durable
+   c) Atomic, Concurrent, Independent, Distributed
+   d) Applied, Controlled, Integrated, Distributed
+   Answer: a) Atomicity, Consistency, Isolation, Durability
+
+2. Which annotation marks a method as transactional?
+   a) @Transaction
+   b) @Transactional
+   c) @TransactionManagement
+   d) @Tx
+   Answer: b) @Transactional
+
+3. What is the default fetch type for @OneToMany relationships?
+   a) EAGER
+   b) LAZY
+   c) IMMEDIATE
+   d) DEFERRED
+   Answer: b) LAZY
+
+4. Which cascade type removes orphaned entities?
+   a) CascadeType.REMOVE
+   b) CascadeType.DELETE
+   c) orphanRemoval = true
+   d) CascadeType.ORPHAN
+   Answer: c) orphanRemoval = true
+
+5. What annotation creates a bidirectional One-to-One relationship?
+   a) @OneToOne(mappedBy = "propertyName")
+   b) @OneToOne(bidirectional = true)
+   c) @OneToOne(fetch = BIDIRECTIONAL)
+   d) @BidirectionalOneToOne
+   Answer: a) @OneToOne(mappedBy = "propertyName")
+
+6. Which isolation level prevents dirty reads?
+   a) READ_UNCOMMITTED
+   b) READ_COMMITTED
+   c) REPEATABLE_READ
+   d) SERIALIZABLE
+   Answer: b) READ_COMMITTED
+
+7. What is the N+1 problem in Hibernate?
+   a) Mathematical equation
+   b) Performance issue with lazy loading
+   c) Database constraint error
+   d) Memory overflow problem
+   Answer: b) Performance issue with lazy loading
+
+8. How do you solve the N+1 problem?
+   a) Use JOIN FETCH in queries
+   b) Enable second-level cache
+   c) Use batch fetching
+   d) All of the above
+   Answer: d) All of the above
+
+9. Which annotation is used for Many-to-Many relationships?
+   a) @ManyToMany
+   b) @ManyMany
+   c) @MultipleToMultiple
+   d) @ManyRelation
+   Answer: a) @ManyToMany
+
+10. What does @JoinTable specify?
+    a) Table joins in queries
+    b) Join table for Many-to-Many relationships
+    c) Table joining strategy
+    d) Database join operations
+    Answer: b) Join table for Many-to-Many relationships
+
+11. Which transaction propagation creates a new transaction?
+    a) REQUIRED
+    b) REQUIRES_NEW
+    c) SUPPORTS
+    d) MANDATORY
+    Answer: b) REQUIRES_NEW
+
+12. What does @Transactional(readOnly = true) do?
+    a) Makes transaction read-only for optimization
+    b) Prevents data modifications
+    c) Enables read-only mode
+    d) All of the above
+    Answer: d) All of the above
+
+13. Which lifecycle callback is called before entity persistence?
+    a) @PrePersist
+    b) @PostPersist
+    c) @BeforePersist
+    d) @OnPersist
+    Answer: a) @PrePersist
+
+14. What is the purpose of @GeneratedValue?
+    a) Generates random values
+    b) Specifies ID generation strategy
+    c) Creates generated columns
+    d) Generates entity instances
+    Answer: b) Specifies ID generation strategy
+
+15. Which fetch type loads associated entities immediately?
+    a) LAZY
+    b) EAGER
+    c) IMMEDIATE
+    d) INSTANT
+    Answer: b) EAGER
+
+16. What does CascadeType.ALL include?
+    a) All cascade operations
+    b) PERSIST, MERGE, REMOVE, REFRESH, DETACH
+    c) All database operations
+    d) All entity operations
+    Answer: b) PERSIST, MERGE, REMOVE, REFRESH, DETACH
+
+17. How do you specify a foreign key column?
+    a) @ForeignKey
+    b) @JoinColumn
+    c) @ForeignColumn
+    d) @RelationColumn
+    Answer: b) @JoinColumn
+
+18. Which annotation creates a composite primary key?
+    a) @CompositeId
+    b) @EmbeddedId
+    c) @CompoundKey
+    d) @MultipleId
+    Answer: b) @EmbeddedId
+
+19. What is a detached entity in Hibernate?
+    a) Entity not in database
+    b) Entity outside session context
+    c) Deleted entity
+    d) Temporary entity
+    Answer: b) Entity outside session context
+
+20. How do you enable second-level cache?
+    a) hibernate.cache.use_second_level_cache=true
+    b) Enable L2 cache in configuration
+    c) Use @Cache annotation on entities
+    d) All of the above
+    Answer: d) All of the above
+
+21. Which strategy is used for inheritance mapping?
+    a) TABLE_PER_CLASS
+    b) SINGLE_TABLE
+    c) JOINED
+    d) All of the above
+    Answer: d) All of the above
+
+22. What does @Version annotation do?
+    a) Specifies entity version
+    b) Enables optimistic locking
+    c) Creates version control
+    d) Sets database version
+    Answer: b) Enables optimistic locking
+
+23. How do you handle LazyInitializationException?
+    a) Use JOIN FETCH
+    b) Initialize collections in session
+    c) Use @Transactional
+    d) All of the above
+    Answer: d) All of the above
+
+24. Which annotation specifies table name?
+    a) @TableName
+    b) @Table
+    c) @Entity(table = "name")
+    d) @DatabaseTable
+    Answer: b) @Table
+
+25. What is the default cascade type for relationships?
+    a) CascadeType.ALL
+    b) CascadeType.PERSIST
+    c) No cascade
+    d) CascadeType.MERGE
+    Answer: c) No cascade
+
+====================================================================

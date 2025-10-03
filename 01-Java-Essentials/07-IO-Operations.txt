@@ -1,0 +1,226 @@
+====================================================================
+                        I/O OPERATIONS IN JAVA
+====================================================================
+
+INTRODUCTION:
+Java I/O (Input/Output) provides a comprehensive set of classes for reading and writing data. The I/O system is built around streams - sequences of data that can be read from or written to various sources like files, network connections, or memory.
+
+KEY CONCEPTS:
+
+1. STREAM TYPES:
+   a) Byte Streams: Handle binary data (8-bit bytes)
+      - InputStream (abstract base class for reading)
+      - OutputStream (abstract base class for writing)
+   
+   b) Character Streams: Handle text data (16-bit characters)
+      - Reader (abstract base class for reading)
+      - Writer (abstract base class for writing)
+
+2. BYTE STREAM CLASSES:
+   - FileInputStream/FileOutputStream: File operations
+   - ByteArrayInputStream/ByteArrayOutputStream: Memory operations
+   - BufferedInputStream/BufferedOutputStream: Buffered operations
+   - DataInputStream/DataOutputStream: Primitive data types
+
+3. CHARACTER STREAM CLASSES:
+   - FileReader/FileWriter: File text operations
+   - StringReader/StringWriter: String operations
+   - BufferedReader/BufferedWriter: Buffered text operations
+   - PrintWriter: Formatted text output
+
+4. NIO (New I/O):
+   - Introduced in Java 1.4
+   - Non-blocking I/O operations
+   - Channel-based I/O
+   - Buffer-oriented operations
+   - Selector for multiplexed I/O
+
+5. NIO.2 (Java 7):
+   - Path interface for file system paths
+   - Files utility class
+   - Improved file operations
+   - File system watching
+
+EXAMPLE CODE:
+
+// Reading from file using FileInputStream
+try (FileInputStream fis = new FileInputStream("input.txt")) {
+    int data;
+    while ((data = fis.read()) != -1) {
+        System.out.print((char) data);
+    }
+}
+
+// Writing to file using FileOutputStream
+try (FileOutputStream fos = new FileOutputStream("output.txt")) {
+    String text = "Hello World";
+    fos.write(text.getBytes());
+}
+
+// Reading text file using BufferedReader
+try (BufferedReader br = new BufferedReader(new FileReader("file.txt"))) {
+    String line;
+    while ((line = br.readLine()) != null) {
+        System.out.println(line);
+    }
+}
+
+// Writing text file using PrintWriter
+try (PrintWriter pw = new PrintWriter("output.txt")) {
+    pw.println("First line");
+    pw.println("Second line");
+}
+
+// NIO.2 example
+Path path = Paths.get("example.txt");
+List<String> lines = Files.readAllLines(path);
+Files.write(path, Arrays.asList("Line 1", "Line 2"));
+
+// Copying files
+Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What are streams in Java I/O?
+   a) Water streams
+   b) Sequences of data
+   c) Processing threads
+   d) Memory streams
+   Answer: b) Sequences of data
+
+2. Which class is the base class for reading byte streams?
+   a) Reader
+   b) InputStream
+   c) FileInput
+   d) ByteReader
+   Answer: b) InputStream
+
+3. What is the difference between byte streams and character streams?
+   a) No difference
+   b) Byte streams handle 8-bit data, character streams handle 16-bit data
+   c) Character streams are faster
+   d) Byte streams are newer
+   Answer: b) Byte streams handle 8-bit data, character streams handle 16-bit data
+
+4. Which class would you use to read text from a file efficiently?
+   a) FileReader
+   b) BufferedReader
+   c) FileInputStream
+   d) Scanner
+   Answer: b) BufferedReader
+
+5. What does the read() method return when end of stream is reached?
+   a) 0
+   b) null
+   c) -1
+   d) EOF
+   Answer: c) -1
+
+6. Which class is used for formatted text output?
+   a) FileWriter
+   b) BufferedWriter
+   c) PrintWriter
+   d) OutputWriter
+   Answer: c) PrintWriter
+
+7. What is NIO in Java?
+   a) New Input Output
+   b) Non-blocking Input Output
+   c) Network Input Output
+   d) Native Input Output
+   Answer: b) Non-blocking Input Output
+
+8. In which Java version was NIO introduced?
+   a) Java 1.3
+   b) Java 1.4
+   c) Java 1.5
+   d) Java 1.6
+   Answer: b) Java 1.4
+
+9. What is the purpose of buffered streams?
+   a) Store data permanently
+   b. Improve performance by reducing system calls
+   c) Compress data
+   d) Encrypt data
+   Answer: b) Improve performance by reducing system calls
+
+10. Which interface represents file system paths in NIO.2?
+    a) File
+    b) Path
+    c) Directory
+    d) Location
+    Answer: b) Path
+
+11. What is the advantage of try-with-resources?
+    a) Better performance
+    b) Automatic resource management
+    c) Exception handling
+    d) Memory optimization
+    Answer: b) Automatic resource management
+
+12. Which class would you use to read primitive data types from a stream?
+    a) DataInputStream
+    b) ObjectInputStream
+    c) PrimitiveInputStream
+    d) TypeInputStream
+    Answer: a) DataInputStream
+
+13. What does Files.readAllLines() return?
+    a) String
+    b) List<String>
+    c) String[]
+    d) Stream<String>
+    Answer: b) List<String>
+
+14. Which is true about character streams?
+    a) They handle binary data
+    b) They automatically handle character encoding
+    c) They are slower than byte streams
+    d) They can't handle Unicode
+    Answer: b) They automatically handle character encoding
+
+15. What is a Channel in NIO?
+    a) Communication medium
+    b) Data buffer
+    c) File handle
+    d) Network connection
+    Answer: a) Communication medium
+
+16. Which method is used to check if a file exists in NIO.2?
+    a) Files.exists()
+    b) Path.exists()
+    c) File.exists()
+    d) Files.isExists()
+    Answer: a) Files.exists()
+
+17. What does flush() method do?
+    a) Clears the buffer
+    b) Forces buffered data to be written
+    c) Closes the stream
+    d) Resets the stream
+    Answer: b) Forces buffered data to be written
+
+18. Which exception is commonly thrown by I/O operations?
+    a) IOError
+    b) IOException
+    c) FileException
+    d) StreamException
+    Answer: b) IOException
+
+19. What is the purpose of Selector in NIO?
+    a) Select files
+    b) Multiplexed I/O operations
+    c) Select data types
+    d) Select streams
+    Answer: b) Multiplexed I/O operations
+
+20. Which is the correct way to copy a file in NIO.2?
+    a) Files.copy(source, target)
+    b) Path.copy(source, target)
+    c) Files.copyFile(source, target)
+    d) Files.duplicate(source, target)
+    Answer: a) Files.copy(source, target)
+
+====================================================================

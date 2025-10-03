@@ -1,0 +1,776 @@
+====================================================================
+                            SPRING MVC ARCHITECTURE
+====================================================================
+
+INTRODUCTION:
+Spring MVC (Model-View-Controller) is Spring's web framework implementation that follows the MVC design pattern. It provides a flexible and powerful way to build web applications by separating concerns into Models (data), Views (presentation), and Controllers (request handling logic). Spring MVC is built around a DispatcherServlet that dispatches requests to appropriate handlers.
+
+KEY CONCEPTS:
+
+1. MVC PATTERN:
+   - Model: Represents data and business logic
+   - View: Handles presentation layer (JSP, Thymeleaf, JSON)
+   - Controller: Processes requests and coordinates between Model and View
+   - Separation of concerns for maintainability
+
+2. CORE COMPONENTS:
+   - DispatcherServlet: Front controller that handles all requests
+   - HandlerMapping: Maps requests to appropriate handlers
+   - Controller: Handles specific requests and returns ModelAndView
+   - ViewResolver: Resolves logical view names to actual views
+   - Model: Carries data between controller and view
+
+3. REQUEST PROCESSING FLOW:
+   1. Client sends request to DispatcherServlet
+   2. DispatcherServlet consults HandlerMapping
+   3. Controller processes request and returns ModelAndView
+   4. ViewResolver resolves view name
+   5. View renders response with model data
+   6. Response sent back to client
+
+4. ANNOTATIONS:
+   - @Controller: Marks class as Spring MVC controller
+   - @RequestMapping: Maps requests to handler methods
+   - @RequestParam: Binds request parameters to method parameters
+   - @PathVariable: Extracts values from URI template
+   - @ModelAttribute: Binds request data to model objects
+
+5. VIEW TECHNOLOGIES:
+   - JSP (JavaServer Pages)
+   - Thymeleaf template engine
+   - Freemarker templates
+   - JSON/XML responses for REST APIs
+   - PDF, Excel, and other custom views
+
+EXAMPLE CODE:
+
+// Basic Spring MVC Configuration
+@Configuration
+@EnableWebMvc
+@ComponentScan(basePackages = "com.example.web")
+public class WebConfig implements WebMvcConfigurer {
+    
+    // View Resolver Configuration
+    @Bean
+    public ViewResolver viewResolver() {
+        InternalResourceViewResolver resolver = new InternalResourceViewResolver();
+        resolver.setPrefix("/WEB-INF/views/");
+        resolver.setSuffix(".jsp");
+        resolver.setViewClass(JstlView.class);
+        return resolver;
+    }
+    
+    // Static Resource Handling
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/static/**")
+                .addResourceLocations("/static/");
+        registry.addResourceHandler("/css/**")
+                .addResourceLocations("/css/");
+        registry.addResourceHandler("/js/**")
+                .addResourceLocations("/js/");
+    }
+    
+    // Message Source for Internationalization
+    @Bean
+    public MessageSource messageSource() {
+        ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("messages");
+        messageSource.setDefaultEncoding("UTF-8");
+        return messageSource;
+    }
+    
+    // Locale Resolver
+    @Bean
+    public LocaleResolver localeResolver() {
+        SessionLocaleResolver resolver = new SessionLocaleResolver();
+        resolver.setDefaultLocale(Locale.ENGLISH);
+        return resolver;
+    }
+    
+    // Interceptor Configuration
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(new LoggingInterceptor());
+        registry.addInterceptor(new AuthenticationInterceptor())
+                .addPathPatterns("/admin/**")
+                .excludePathPatterns("/admin/login");
+    }
+}
+
+// Web Application Initializer (Replaces web.xml)
+public class WebAppInitializer implements WebApplicationInitializer {
+    
+    @Override
+    public void onStartup(ServletContext servletContext) throws ServletException {
+        // Create the root application context
+        AnnotationConfigWebApplicationContext rootContext = new AnnotationConfigWebApplicationContext();
+        rootContext.register(RootConfig.class);
+        
+        // Create the dispatcher servlet's Spring application context
+        AnnotationConfigWebApplicationContext dispatcherContext = new AnnotationConfigWebApplicationContext();
+        dispatcherContext.register(WebConfig.class);
+        
+        // Register and map the dispatcher servlet
+        ServletRegistration.Dynamic dispatcher = servletContext.addServlet("dispatcher", 
+            new DispatcherServlet(dispatcherContext));
+        dispatcher.setLoadOnStartup(1);
+        dispatcher.addMapping("/");
+        
+        // Register Spring context listener
+        servletContext.addListener(new ContextLoaderListener(rootContext));
+    }
+}
+
+// Basic Controller Examples
+@Controller
+public class HomeController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(HomeController.class);
+    
+    // Simple request mapping
+    @RequestMapping("/")
+    public String home(Model model) {
+        model.addAttribute("message", "Welcome to Spring MVC!");
+        model.addAttribute("currentTime", LocalDateTime.now());
+        return "home"; // Resolves to /WEB-INF/views/home.jsp
+    }
+    
+    // GET request with path variable
+    @GetMapping("/user/{id}")
+    public String showUser(@PathVariable Long id, Model model) {
+        // Simulate user service call
+        User user = userService.findById(id);
+        if (user == null) {
+            throw new UserNotFoundException("User not found with id: " + id);
+        }
+        
+        model.addAttribute("user", user);
+        return "user/profile";
+    }
+    
+    // POST request with form data
+    @PostMapping("/user/create")
+    public String createUser(@ModelAttribute User user, 
+                           BindingResult result,
+                           RedirectAttributes redirectAttributes) {
+        
+        if (result.hasErrors()) {
+            return "user/create-form";
+        }
+        
+        User savedUser = userService.save(user);
+        redirectAttributes.addFlashAttribute("message", "User created successfully!");
+        return "redirect:/user/" + savedUser.getId();
+    }
+    
+    // Request with parameters
+    @GetMapping("/search")
+    public String searchUsers(@RequestParam(defaultValue = "") String query,
+                            @RequestParam(defaultValue = "0") int page,
+                            @RequestParam(defaultValue = "10") int size,
+                            Model model) {
+        
+        Page<User> users = userService.searchUsers(query, page, size);
+        model.addAttribute("users", users);
+        model.addAttribute("query", query);
+        return "user/search-results";
+    }
+}
+
+// RESTful Controller
+@RestController
+@RequestMapping("/api/users")
+public class UserRestController {
+    
+    @Autowired
+    private UserService userService;
+    
+    // GET all users
+    @GetMapping
+    public ResponseEntity<List<User>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        
+        Page<User> userPage = userService.findAll(PageRequest.of(page, size));
+        return ResponseEntity.ok(userPage.getContent());
+    }
+    
+    // GET user by ID
+    @GetMapping("/{id}")
+    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+        User user = userService.findById(id);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(user);
+    }
+    
+    // POST create user
+    @PostMapping
+    public ResponseEntity<User> createUser(@Valid @RequestBody User user, 
+                                         BindingResult result) {
+        if (result.hasErrors()) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        User savedUser = userService.save(user);
+        URI location = ServletUriComponentsBuilder
+            .fromCurrentRequest()
+            .path("/{id}")
+            .buildAndExpand(savedUser.getId())
+            .toUri();
+            
+        return ResponseEntity.created(location).body(savedUser);
+    }
+    
+    // PUT update user
+    @PutMapping("/{id}")
+    public ResponseEntity<User> updateUser(@PathVariable Long id, 
+                                         @Valid @RequestBody User user) {
+        if (!userService.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        user.setId(id);
+        User updatedUser = userService.save(user);
+        return ResponseEntity.ok(updatedUser);
+    }
+    
+    // DELETE user
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        if (!userService.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        userService.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+// Form Handling Controller
+@Controller
+@RequestMapping("/forms")
+public class FormController {
+    
+    @Autowired
+    private UserService userService;
+    
+    // Display form
+    @GetMapping("/user-registration")
+    public String showRegistrationForm(Model model) {
+        model.addAttribute("user", new User());
+        model.addAttribute("countries", getCountries());
+        return "forms/user-registration";
+    }
+    
+    // Process form submission
+    @PostMapping("/user-registration")
+    public String processRegistration(@Valid @ModelAttribute("user") User user,
+                                    BindingResult result,
+                                    Model model,
+                                    RedirectAttributes redirectAttributes) {
+        
+        // Custom validation
+        if (userService.existsByEmail(user.getEmail())) {
+            result.rejectValue("email", "error.user", "Email already exists");
+        }
+        
+        if (result.hasErrors()) {
+            model.addAttribute("countries", getCountries());
+            return "forms/user-registration";
+        }
+        
+        User savedUser = userService.save(user);
+        redirectAttributes.addFlashAttribute("successMessage", 
+            "Registration successful! Welcome " + savedUser.getFirstName());
+        
+        return "redirect:/forms/success";
+    }
+    
+    // Multi-part file upload
+    @PostMapping("/upload")
+    public String handleFileUpload(@RequestParam("file") MultipartFile file,
+                                 RedirectAttributes redirectAttributes) {
+        
+        if (file.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Please select a file to upload");
+            return "redirect:/forms/upload";
+        }
+        
+        try {
+            // Save file
+            String fileName = StringUtils.cleanPath(file.getOriginalFilename());
+            Path targetLocation = Paths.get("uploads").resolve(fileName);
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            
+            redirectAttributes.addFlashAttribute("message", 
+                "File uploaded successfully: " + fileName);
+            
+        } catch (IOException e) {
+            redirectAttributes.addFlashAttribute("error", 
+                "Failed to upload file: " + e.getMessage());
+        }
+        
+        return "redirect:/forms/upload";
+    }
+    
+    private List<String> getCountries() {
+        return Arrays.asList("USA", "UK", "Canada", "Australia", "Germany", "France");
+    }
+}
+
+// Exception Handling
+@ControllerAdvice
+public class GlobalExceptionHandler {
+    
+    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    
+    @ExceptionHandler(UserNotFoundException.class)
+    public String handleUserNotFound(UserNotFoundException ex, Model model) {
+        logger.error("User not found: {}", ex.getMessage());
+        model.addAttribute("error", ex.getMessage());
+        return "error/404";
+    }
+    
+    @ExceptionHandler(ValidationException.class)
+    public String handleValidation(ValidationException ex, Model model) {
+        logger.error("Validation error: {}", ex.getMessage());
+        model.addAttribute("error", ex.getMessage());
+        return "error/validation";
+    }
+    
+    @ExceptionHandler(Exception.class)
+    public String handleGeneral(Exception ex, Model model) {
+        logger.error("Unexpected error: {}", ex.getMessage(), ex);
+        model.addAttribute("error", "An unexpected error occurred");
+        return "error/general";
+    }
+    
+    // For REST controllers
+    @ExceptionHandler(UserNotFoundException.class)
+    @ResponseBody
+    public ResponseEntity<ErrorResponse> handleUserNotFoundRest(UserNotFoundException ex) {
+        ErrorResponse error = new ErrorResponse("USER_NOT_FOUND", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+}
+
+// Interceptor Example
+public class LoggingInterceptor implements HandlerInterceptor {
+    
+    private static final Logger logger = LoggerFactory.getLogger(LoggingInterceptor.class);
+    
+    @Override
+    public boolean preHandle(HttpServletRequest request, 
+                           HttpServletResponse response, 
+                           Object handler) throws Exception {
+        
+        String requestURI = request.getRequestURI();
+        String method = request.getMethod();
+        
+        logger.info("Incoming request: {} {}", method, requestURI);
+        
+        // Set start time for performance monitoring
+        request.setAttribute("startTime", System.currentTimeMillis());
+        
+        return true; // Continue with the request
+    }
+    
+    @Override
+    public void postHandle(HttpServletRequest request, 
+                          HttpServletResponse response, 
+                          Object handler, 
+                          ModelAndView modelAndView) throws Exception {
+        
+        String requestURI = request.getRequestURI();
+        logger.info("Request processed: {}", requestURI);
+        
+        if (modelAndView != null) {
+            logger.debug("View name: {}", modelAndView.getViewName());
+        }
+    }
+    
+    @Override
+    public void afterCompletion(HttpServletRequest request, 
+                              HttpServletResponse response, 
+                              Object handler, 
+                              Exception ex) throws Exception {
+        
+        Long startTime = (Long) request.getAttribute("startTime");
+        if (startTime != null) {
+            long endTime = System.currentTimeMillis();
+            long executionTime = endTime - startTime;
+            
+            logger.info("Request completed in {} ms: {} {}", 
+                       executionTime, request.getMethod(), request.getRequestURI());
+        }
+        
+        if (ex != null) {
+            logger.error("Request failed: {}", ex.getMessage());
+        }
+    }
+}
+
+// Model Classes
+public class User {
+    
+    @NotNull
+    @Size(min = 2, max = 50)
+    private String firstName;
+    
+    @NotNull
+    @Size(min = 2, max = 50)
+    private String lastName;
+    
+    @NotNull
+    @Email
+    private String email;
+    
+    @NotNull
+    @Size(min = 6, max = 100)
+    private String password;
+    
+    @NotNull
+    private String country;
+    
+    @Past
+    private LocalDate birthDate;
+    
+    private boolean agreedToTerms;
+    
+    // Constructors, getters, and setters
+    public User() {}
+    
+    public User(String firstName, String lastName, String email) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+    }
+    
+    // Getters and setters...
+}
+
+// View (JSP Example)
+<%-- /WEB-INF/views/user/profile.jsp --%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Profile</title>
+    <link rel="stylesheet" href="<c:url value='/css/style.css'/>">
+</head>
+<body>
+    <div class="container">
+        <h1>User Profile</h1>
+        
+        <div class="user-info">
+            <h2>${user.firstName} ${user.lastName}</h2>
+            <p><strong>Email:</strong> ${user.email}</p>
+            <p><strong>Country:</strong> ${user.country}</p>
+            <p><strong>Birth Date:</strong> 
+               <fmt:formatDate value="${user.birthDate}" pattern="MM/dd/yyyy"/>
+            </p>
+        </div>
+        
+        <div class="actions">
+            <a href="<c:url value='/user/${user.id}/edit'/>" class="btn btn-primary">Edit</a>
+            <a href="<c:url value='/users'/>" class="btn btn-secondary">Back to List</a>
+        </div>
+    </div>
+</body>
+</html>
+
+// Form JSP Example
+<%-- /WEB-INF/views/forms/user-registration.jsp --%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ taglib uri="http://www.springframework.org/tags/form" prefix="form" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Registration</title>
+    <link rel="stylesheet" href="<c:url value='/css/style.css'/>">
+</head>
+<body>
+    <div class="container">
+        <h1>User Registration</h1>
+        
+        <form:form modelAttribute="user" method="post" cssClass="form">
+            <div class="form-group">
+                <form:label path="firstName">First Name:</form:label>
+                <form:input path="firstName" cssClass="form-control"/>
+                <form:errors path="firstName" cssClass="error"/>
+            </div>
+            
+            <div class="form-group">
+                <form:label path="lastName">Last Name:</form:label>
+                <form:input path="lastName" cssClass="form-control"/>
+                <form:errors path="lastName" cssClass="error"/>
+            </div>
+            
+            <div class="form-group">
+                <form:label path="email">Email:</form:label>
+                <form:input path="email" type="email" cssClass="form-control"/>
+                <form:errors path="email" cssClass="error"/>
+            </div>
+            
+            <div class="form-group">
+                <form:label path="password">Password:</form:label>
+                <form:password path="password" cssClass="form-control"/>
+                <form:errors path="password" cssClass="error"/>
+            </div>
+            
+            <div class="form-group">
+                <form:label path="country">Country:</form:label>
+                <form:select path="country" cssClass="form-control">
+                    <form:option value="">Select Country</form:option>
+                    <form:options items="${countries}"/>
+                </form:select>
+                <form:errors path="country" cssClass="error"/>
+            </div>
+            
+            <div class="form-group">
+                <form:label path="birthDate">Birth Date:</form:label>
+                <form:input path="birthDate" type="date" cssClass="form-control"/>
+                <form:errors path="birthDate" cssClass="error"/>
+            </div>
+            
+            <div class="form-group">
+                <form:checkbox path="agreedToTerms" cssClass="checkbox"/>
+                <form:label path="agreedToTerms">I agree to the terms and conditions</form:label>
+                <form:errors path="agreedToTerms" cssClass="error"/>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Register</button>
+                <a href="<c:url value='/'/>" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form:form>
+    </div>
+</body>
+</html>
+
+// Testing Spring MVC Controllers
+@WebMvcTest(UserController.class)
+public class UserControllerTest {
+    
+    @Autowired
+    private MockMvc mockMvc;
+    
+    @MockBean
+    private UserService userService;
+    
+    @Test
+    public void testShowUser() throws Exception {
+        User user = new User("John", "Doe", "john@example.com");
+        user.setId(1L);
+        
+        when(userService.findById(1L)).thenReturn(user);
+        
+        mockMvc.perform(get("/user/1"))
+               .andExpect(status().isOk())
+               .andExpect(view().name("user/profile"))
+               .andExpect(model().attribute("user", user));
+    }
+    
+    @Test
+    public void testCreateUser() throws Exception {
+        User user = new User("Jane", "Smith", "jane@example.com");
+        
+        when(userService.save(any(User.class))).thenReturn(user);
+        
+        mockMvc.perform(post("/user/create")
+                       .param("firstName", "Jane")
+                       .param("lastName", "Smith")
+                       .param("email", "jane@example.com"))
+               .andExpect(status().is3xxRedirection())
+               .andExpect(redirectedUrl("/user/" + user.getId()));
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What does MVC stand for?
+   a) Model-View-Component
+   b) Model-View-Controller  
+   c) Model-Virtual-Controller
+   d) Model-View-Configuration
+   Answer: b) Model-View-Controller
+
+2. What is the role of DispatcherServlet?
+   a) Dispatches emails
+   b) Front controller that handles all HTTP requests
+   c) Manages database connections
+   d) Controls user sessions
+   Answer: b) Front controller that handles all HTTP requests
+
+3. Which annotation marks a class as Spring MVC controller?
+   a) @Component
+   b) @Service
+   c) @Controller
+   d) @WebController
+   Answer: c) @Controller
+
+4. What does @RequestMapping do?
+   a) Maps requests to handler methods
+   b) Maps database records
+   c) Maps view templates
+   d) Maps model attributes
+   Answer: a) Maps requests to handler methods
+
+5. Which annotation extracts path variables from URL?
+   a) @RequestParam
+   b) @PathVariable
+   c) @URLParam
+   d) @PathParam
+   Answer: b) @PathVariable
+
+6. What is the purpose of ViewResolver?
+   a) Resolves view conflicts
+   b) Resolves logical view names to actual views
+   c) Resolves model data
+   d) Resolves controller methods
+   Answer: b) Resolves logical view names to actual views
+
+7. Which annotation binds request parameters to method parameters?
+   a) @Param
+   b) @RequestParam
+   c) @Parameter
+   d) @BindParam
+   Answer: b) @RequestParam
+
+8. What does @ModelAttribute do?
+   a) Defines model properties
+   b) Binds request data to model objects
+   c) Creates model instances
+   d) Validates model data
+   Answer: b) Binds request data to model objects
+
+9. Which HTTP method is used by @GetMapping?
+   a) POST
+   b) PUT
+   c) GET
+   d) DELETE
+   Answer: c) GET
+
+10. What is the purpose of Model interface?
+    a) Database modeling
+    b) Carries data from controller to view
+    c) Models user behavior
+    d) Creates model objects
+    Answer: b) Carries data from controller to view
+
+11. Which annotation is used for REST controllers?
+    a) @Controller
+    b) @RestController
+    c) @WebController
+    d) @APIController
+    Answer: b) @RestController
+
+12. What does @ResponseBody do?
+    a) Returns response body
+    b) Indicates method return value should be bound to web response body
+    c) Creates response objects
+    d) Validates response format
+    Answer: b) Indicates method return value should be bound to web response body
+
+13. Which annotation handles exceptions globally?
+    a) @ExceptionHandler
+    b) @ControllerAdvice
+    c) @GlobalHandler
+    d) @ErrorHandler
+    Answer: b) @ControllerAdvice
+
+14. What is HandlerMapping responsible for?
+    a) Mapping handlers to URLs
+    b) Mapping database entities
+    c) Mapping view templates
+    d) Mapping model attributes
+    Answer: a) Mapping handlers to URLs
+
+15. Which annotation validates form data?
+    a) @Validate
+    b) @Check
+    c) @Valid
+    d) @Verify
+    Answer: c) @Valid
+
+16. What does RedirectAttributes do?
+    a) Redirects users
+    b) Passes attributes to redirect target
+    c) Configures redirects
+    d) Validates redirect URLs
+    Answer: b) Passes attributes to redirect target
+
+17. Which interface is used for intercepting requests?
+    a) RequestInterceptor
+    b) HandlerInterceptor
+    c) WebInterceptor
+    d) MVCInterceptor
+    Answer: b) HandlerInterceptor
+
+18. What is the purpose of @InitBinder?
+    a) Initializes beans
+    b) Customizes data binding and validation
+    c) Binds initial data
+    d) Initializes controllers
+    Answer: b) Customizes data binding and validation
+
+19. Which annotation handles file uploads?
+    a) @FileUpload
+    b) @MultipartFile
+    c) @RequestParam("file") MultipartFile
+    d) @Upload
+    Answer: c) @RequestParam("file") MultipartFile
+
+20. What does @SessionAttributes do?
+    a) Manages user sessions
+    b) Stores model attributes in HTTP session
+    c) Creates session objects
+    d) Validates session data
+    Answer: b) Stores model attributes in HTTP session
+
+21. Which HTTP status code indicates successful resource creation?
+    a) 200 OK
+    b) 201 Created
+    c) 202 Accepted
+    d) 204 No Content
+    Answer: b) 201 Created
+
+22. What is the purpose of content negotiation?
+    a) Negotiates prices
+    b) Determines response format based on client preferences
+    c) Negotiates security
+    d) Manages content delivery
+    Answer: b) Determines response format based on client preferences
+
+23. Which annotation enables Spring MVC configuration?
+    a) @EnableMVC
+    b) @EnableWebMvc
+    c) @WebMvcConfig
+    d) @MVCConfiguration
+    Answer: b) @EnableWebMvc
+
+24. What does @CrossOrigin do?
+    a) Crosses data origins
+    b) Enables Cross-Origin Resource Sharing (CORS)
+    c) Creates cross-references
+    d) Manages cross-platform compatibility
+    Answer: b) Enables Cross-Origin Resource Sharing (CORS)
+
+25. Which testing annotation is used for MVC layer testing?
+    a) @WebTest
+    b) @MVCTest
+    c) @WebMvcTest
+    d) @ControllerTest
+    Answer: c) @WebMvcTest
+
+====================================================================

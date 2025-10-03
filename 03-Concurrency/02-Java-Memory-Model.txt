@@ -1,0 +1,354 @@
+====================================================================
+                        JAVA MEMORY MODEL (JMM)
+====================================================================
+
+INTRODUCTION:
+The Java Memory Model defines how threads interact through memory and what behaviors are allowed in concurrent execution. It specifies the rules for how and when changes made by one thread become visible to other threads, and how synchronization constructs affect memory visibility.
+
+KEY CONCEPTS:
+
+1. MEMORY HIERARCHY:
+   - Main Memory: Shared among all threads
+   - Working Memory: Thread-local cache (CPU registers, cache)
+   - Each thread has its own working memory copy
+   - Synchronization forces coherence between working and main memory
+
+2. HAPPENS-BEFORE RELATIONSHIP:
+   - Defines partial ordering of memory operations
+   - If A happens-before B, then memory effects of A are visible to B
+   - Established by: synchronized blocks, volatile reads/writes, thread start/join
+
+3. MEMORY OPERATIONS:
+   - Read: Loading value from main memory to working memory
+   - Write: Storing value from working memory to main memory
+   - Use: Using value from working memory in computation
+   - Assign: Updating working memory with new value
+   - Load: Transferring from main to working memory
+   - Store: Transferring from working to main memory
+
+4. SYNCHRONIZATION RULES:
+   - Synchronization actions create happens-before edges
+   - Program order: Actions in single thread are ordered
+   - Monitor lock rule: Unlock happens-before subsequent lock
+   - Volatile variable rule: Write happens-before subsequent read
+   - Thread start rule: Thread.start() happens-before started thread actions
+   - Thread termination rule: Thread actions happen-before join() returns
+
+5. MEMORY CONSISTENCY ERRORS:
+   - Data races: Concurrent access without proper synchronization
+   - Visibility issues: Changes not visible across threads
+   - Reordering issues: Compiler/processor optimizations
+
+EXAMPLE CODE:
+
+// Demonstrating visibility issue
+class VisibilityExample {
+    private boolean ready = false;
+    private int number = 0;
+    
+    // Writer thread
+    public void writer() {
+        number = 42;          // 1
+        ready = true;         // 2
+    }
+    
+    // Reader thread
+    public void reader() {
+        if (ready) {          // 3
+            System.out.println(number); // 4 - May print 0!
+        }
+    }
+    
+    // Fixed with volatile
+    private volatile boolean readyVolatile = false;
+    
+    public void writerFixed() {
+        number = 42;
+        readyVolatile = true; // Happens-before relationship
+    }
+    
+    public void readerFixed() {
+        if (readyVolatile) {  // Reads latest value
+            System.out.println(number); // Guaranteed to print 42
+        }
+    }
+}
+
+// Happens-before with synchronized
+class SynchronizedExample {
+    private int value = 0;
+    private final Object lock = new Object();
+    
+    public void writer() {
+        synchronized (lock) {
+            value = 42;       // Happens-before unlock
+        }                     // Unlock
+    }
+    
+    public void reader() {
+        synchronized (lock) { // Lock happens-after previous unlock
+            System.out.println(value); // Sees updated value
+        }
+    }
+}
+
+// Thread start/join happens-before
+class ThreadJoinExample {
+    private int result = 0;
+    
+    public void example() throws InterruptedException {
+        Thread worker = new Thread(() -> {
+            result = 42;      // Happens-before thread termination
+        });
+        
+        worker.start();       // start() happens-before thread execution
+        worker.join();        // join() happens-after thread completion
+        
+        System.out.println(result); // Guaranteed to see 42
+    }
+}
+
+// Double-checked locking and JMM
+class LazyInitialization {
+    private static volatile Helper helper; // volatile prevents reordering
+    
+    public static Helper getHelper() {
+        Helper result = helper;
+        if (result == null) {
+            synchronized (LazyInitialization.class) {
+                result = helper;
+                if (result == null) {
+                    helper = result = new Helper();
+                }
+            }
+        }
+        return result;
+    }
+    
+    static class Helper {
+        // Helper implementation
+    }
+}
+
+// Reordering example
+class ReorderingExample {
+    private int a = 0, b = 0;
+    private int x = 0, y = 0;
+    
+    // Thread 1
+    public void thread1() {
+        a = 1;    // Can be reordered
+        x = b;    // Can be reordered
+    }
+    
+    // Thread 2  
+    public void thread2() {
+        b = 1;    // Can be reordered
+        y = a;    // Can be reordered
+    }
+    
+    // Possible outcomes: (0,1), (1,0), (1,1), and even (0,0)!
+    // (0,0) possible due to reordering without synchronization
+}
+
+// Memory barriers with volatile
+class MemoryBarrierExample {
+    private int normalVariable = 0;
+    private volatile boolean flag = false;
+    
+    // Writer thread
+    public void writer() {
+        normalVariable = 42;   // 1
+        flag = true;          // 2 - volatile write (store barrier)
+    }
+    
+    // Reader thread
+    public void reader() {
+        if (flag) {           // 3 - volatile read (load barrier)
+            // All writes before volatile write in writer thread
+            // are visible here, including normalVariable = 42
+            System.out.println(normalVariable); // Prints 42
+        }
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What does JMM stand for?
+   a) Java Method Model
+   b) Java Memory Model
+   c) Java Module Model
+   d) Java Message Model
+   Answer: b) Java Memory Model
+
+2. What is working memory in JMM?
+   a) Main memory
+   b) Thread-local memory cache
+   c) Heap memory
+   d) Stack memory
+   Answer: b) Thread-local memory cache
+
+3. What establishes happens-before relationship?
+   a) Method calls
+   b) Variable assignments
+   c) Synchronization actions
+   d) Object creation
+   Answer: c) Synchronization actions
+
+4. What can cause visibility issues between threads?
+   a) Each thread caching variables locally
+   b) Garbage collection
+   c) Method overloading
+   d) Exception handling
+   Answer: a) Each thread caching variables locally
+
+5. What does happens-before guarantee?
+   a) Time ordering
+   b) Memory visibility ordering
+   c) Thread execution order
+   d) Method call order
+   Answer: b) Memory visibility ordering
+
+6. Which creates happens-before relationship?
+   a) volatile write followed by volatile read
+   b) Thread.start()
+   c) synchronized blocks
+   d) All of the above
+   Answer: d) All of the above
+
+7. What is a data race?
+   a) Threads running at same time
+   b) Concurrent access without proper synchronization
+   c) Fast data access
+   d) Competition for CPU time
+   Answer: b) Concurrent access without proper synchronization
+
+8. What can compiler/processor do without synchronization?
+   a) Reorder instructions
+   b) Cache variables
+   c) Optimize code
+   d) All of the above
+   Answer: d) All of the above
+
+9. What does volatile write create?
+   a) Store barrier
+   b) Load barrier
+   c) Memory fence
+   d) All of the above
+   Answer: d) All of the above
+
+10. What does Thread.join() guarantee?
+    a) Thread will start immediately
+    b) All actions in joined thread happen-before join() returns
+    c) Thread will run faster
+    d) Thread synchronization
+    Answer: b) All actions in joined thread happen-before join() returns
+
+11. Can (0,0) result occur in reordering example without synchronization?
+    a) No, impossible
+    b) Yes, due to instruction reordering
+    c) Only on certain architectures
+    d) Only with compiler optimization
+    Answer: b) Yes, due to instruction reordering
+
+12. What is program order?
+    a) Order of program execution
+    b) Actions in single thread appear in program text order
+    c) Thread scheduling order
+    d) Method call order
+    Answer: b) Actions in single thread appear in program text order
+
+13. What does monitor lock rule state?
+    a) Locks prevent other threads
+    b) Unlock happens-before subsequent lock on same monitor
+    c) Only one thread can hold lock
+    d) Locks are expensive
+    Answer: b) Unlock happens-before subsequent lock on same monitor
+
+14. Why is volatile needed in double-checked locking?
+    a) For thread safety
+    b) To prevent instruction reordering during object construction
+    c) For better performance
+    d) To avoid deadlocks
+    Answer: b) To prevent instruction reordering during object construction
+
+15. What is memory consistency error?
+    a) Out of memory error
+    b) Inconsistent view of memory across threads
+    c) Memory leak
+    d) Stack overflow
+    Answer: b) Inconsistent view of memory across threads
+
+16. Which operation is atomic in JMM?
+    a) long assignment (on 32-bit)
+    b) double assignment (on 32-bit)
+    c) Reference assignment
+    d) increment operation
+    Answer: c) Reference assignment
+
+17. What does sequential consistency mean?
+    a) Operations execute in sequence
+    b) Result appears as if operations executed in some sequential order
+    c) Threads run sequentially
+    d) Memory access is sequential
+    Answer: b) Result appears as if operations executed in some sequential order
+
+18. What is the effect of volatile read?
+    a) Load barrier - prevents reordering of subsequent reads/writes
+    b) Only prevents read reordering
+    c) Only prevents write reordering
+    d) No effect on reordering
+    Answer: a) Load barrier - prevents reordering of subsequent reads/writes
+
+19. Can final fields have visibility issues?
+    a) Yes, always
+    b) No, final fields are properly synchronized
+    c) Only for mutable objects
+    d) Only without proper construction
+    Answer: b) No, final fields are properly synchronized
+
+20. What is causality in JMM?
+    a) One event causes another
+    b) Circular dependencies in happens-before
+    c) Preventing impossible behaviors in concurrent programs
+    d) Exception handling
+    Answer: c) Preventing impossible behaviors in concurrent programs
+
+21. What happens without proper synchronization?
+    a) Program may see inconsistent memory states
+    b) Compilation error
+    c) Runtime exception
+    d) Automatic synchronization
+    Answer: a) Program may see inconsistent memory states
+
+22. Which provides stronger guarantee?
+    a) volatile
+    b) synchronized
+    c) Both are same
+    d) Depends on usage
+    Answer: b) synchronized
+
+23. What is publication safety?
+    a) Publishing variables safely
+    b) Ensuring object is fully constructed before reference is visible
+    c) Public method safety
+    d) Publishing to repositories
+    Answer: b) Ensuring object is fully constructed before reference is visible
+
+24. What can break happens-before chain?
+    a) Data races
+    b) Missing synchronization
+    c) Improper volatile usage
+    d) All of the above
+    Answer: d) All of the above
+
+25. What is the fundamental guarantee of JMM?
+    a) Performance optimization
+    b) If program is correctly synchronized, it will not have data races
+    c) Thread safety
+    d) Memory efficiency
+    Answer: b) If program is correctly synchronized, it will not have data races
+
+====================================================================

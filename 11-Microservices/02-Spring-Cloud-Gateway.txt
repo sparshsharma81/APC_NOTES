@@ -1,0 +1,997 @@
+====================================================================
+                      SPRING CLOUD GATEWAY
+====================================================================
+
+INTRODUCTION:
+Spring Cloud Gateway is a reactive gateway built on Spring Framework 5, Project Reactor, and Spring Boot 2. It provides a simple, effective way to route to APIs and provide cross-cutting concerns such as security, monitoring/metrics, and resiliency through filters.
+
+KEY CONCEPTS:
+
+1. GATEWAY COMPONENTS:
+   - Route: Basic building block with ID, destination URI, predicates, and filters
+   - Predicate: Matches HTTP request attributes
+   - Filter: Modifies requests and responses
+   - Gateway Handler Mapping
+   - Gateway Web Handler
+
+2. ROUTE PREDICATES:
+   - Path-based routing
+   - Header-based routing
+   - Method-based routing
+   - Parameter-based routing
+   - Time-based routing
+   - Custom predicates
+
+3. GATEWAY FILTERS:
+   - Pre-filters (modify requests)
+   - Post-filters (modify responses)
+   - Global filters
+   - Custom filters
+   - Built-in filters
+
+4. FEATURES:
+   - Load balancing
+   - Circuit breaker integration
+   - Rate limiting
+   - Authentication/Authorization
+   - Request/Response transformation
+   - Metrics and monitoring
+
+5. INTEGRATION:
+   - Service discovery (Eureka, Consul)
+   - Circuit breakers (Hystrix, Resilience4j)
+   - Security (OAuth2, JWT)
+   - Monitoring (Actuator, Micrometer)
+
+EXAMPLE CODE:
+
+// Spring Cloud Gateway Main Application
+@SpringBootApplication
+@EnableEurekaClient
+public class ApiGatewayApplication {
+    
+    public static void main(String[] args) {
+        SpringApplication.run(ApiGatewayApplication.class, args);
+    }
+}
+
+// Route Configuration using Java DSL
+@Configuration
+@Slf4j
+public class GatewayConfig {
+    
+    @Bean
+    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+        return builder.routes()
+            // User Service Routes
+            .route("user-service", r -> r
+                .path("/api/users/**")
+                .filters(f -> f
+                    .addRequestHeader("X-Gateway", "Spring-Cloud-Gateway")
+                    .addResponseHeader("X-Response-Time", String.valueOf(System.currentTimeMillis()))
+                    .circuitBreaker(c -> c
+                        .setName("user-service-cb")
+                        .setFallbackUri("forward:/fallback/users"))
+                    .retry(retryConfig -> retryConfig
+                        .setRetries(3)
+                        .setSeries(HttpStatus.Series.SERVER_ERROR)
+                        .setMethods(HttpMethod.GET, HttpMethod.POST))
+                    .requestRateLimiter(c -> c
+                        .setRateLimiter(redisRateLimiter())
+                        .setKeyResolver(userKeyResolver())))
+                .uri("lb://user-service"))
+            
+            // Order Service Routes
+            .route("order-service", r -> r
+                .path("/api/orders/**")
+                .and()
+                .method(HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT)
+                .filters(f -> f
+                    .addRequestHeader("X-Service", "order-service")
+                    .modifyRequestBody(String.class, String.class, 
+                        (exchange, body) -> {
+                            log.info("Modifying request body for order service");
+                            return Mono.just(body);
+                        })
+                    .modifyResponseBody(String.class, String.class,
+                        (exchange, body) -> {
+                            log.info("Modifying response body from order service");
+                            return Mono.just(body);
+                        }))
+                .uri("lb://order-service"))
+            
+            // Product Service with Header-based routing
+            .route("product-service-v1", r -> r
+                .path("/api/products/**")
+                .and()
+                .header("X-API-Version", "v1")
+                .filters(f -> f
+                    .addRequestHeader("X-Upstream-Version", "v1")
+                    .stripPrefix(1))
+                .uri("lb://product-service-v1"))
+            
+            .route("product-service-v2", r -> r
+                .path("/api/products/**")
+                .and()
+                .header("X-API-Version", "v2")
+                .filters(f -> f
+                    .addRequestHeader("X-Upstream-Version", "v2")
+                    .stripPrefix(1))
+                .uri("lb://product-service-v2"))
+            
+            // Notification Service with Time-based routing
+            .route("notification-service-business", r -> r
+                .path("/api/notifications/**")
+                .and()
+                .between(LocalDateTime.of(2024, 1, 1, 9, 0), 
+                        LocalDateTime.of(2024, 12, 31, 17, 0))
+                .filters(f -> f
+                    .addRequestHeader("X-Business-Hours", "true"))
+                .uri("lb://notification-service"))
+            
+            .route("notification-service-after-hours", r -> r
+                .path("/api/notifications/**")
+                .filters(f -> f
+                    .addRequestHeader("X-Business-Hours", "false")
+                    .requestRateLimiter(c -> c
+                        .setRateLimiter(afterHoursRateLimiter())
+                        .setKeyResolver(ipKeyResolver())))
+                .uri("lb://notification-service"))
+            
+            // Static Content Route
+            .route("static-content", r -> r
+                .path("/static/**")
+                .filters(f -> f
+                    .stripPrefix(1)
+                    .addResponseHeader("Cache-Control", "max-age=3600"))
+                .uri("http://cdn.example.com"))
+            
+            // Websocket Route
+            .route("websocket-route", r -> r
+                .path("/ws/**")
+                .uri("lb:ws://websocket-service"))
+            
+            .build();
+    }
+    
+    // Rate Limiters
+    @Bean
+    public RedisRateLimiter redisRateLimiter() {
+        return new RedisRateLimiter(10, 20, 1); // 10 requests per second, burst of 20
+    }
+    
+    @Bean
+    public RedisRateLimiter afterHoursRateLimiter() {
+        return new RedisRateLimiter(5, 10, 1); // Reduced rate after hours
+    }
+    
+    // Key Resolvers for Rate Limiting
+    @Bean
+    public KeyResolver userKeyResolver() {
+        return exchange -> {
+            String userId = exchange.getRequest().getHeaders().getFirst("X-User-ID");
+            return userId != null ? Mono.just(userId) : Mono.just("anonymous");
+        };
+    }
+    
+    @Bean
+    public KeyResolver ipKeyResolver() {
+        return exchange -> {
+            String xForwardedFor = exchange.getRequest().getHeaders().getFirst("X-Forwarded-For");
+            String clientIP = xForwardedFor != null ? 
+                xForwardedFor.split(",")[0].trim() : 
+                exchange.getRequest().getRemoteAddress().getAddress().getHostAddress();
+            return Mono.just(clientIP);
+        };
+    }
+    
+    @Bean
+    public KeyResolver pathKeyResolver() {
+        return exchange -> Mono.just(exchange.getRequest().getPath().value());
+    }
+}
+
+// Custom Global Filter
+@Component
+@Slf4j
+public class GlobalLoggingFilter implements GlobalFilter, Ordered {
+    
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        ServerHttpRequest request = exchange.getRequest();
+        ServerHttpResponse response = exchange.getResponse();
+        
+        String requestId = UUID.randomUUID().toString();
+        
+        // Add request ID to headers
+        ServerHttpRequest modifiedRequest = request.mutate()
+            .header("X-Request-ID", requestId)
+            .build();
+        
+        ServerWebExchange modifiedExchange = exchange.mutate()
+            .request(modifiedRequest)
+            .build();
+        
+        long startTime = System.currentTimeMillis();
+        
+        log.info("Request ID: {}, Method: {}, URI: {}, Remote Address: {}", 
+            requestId, 
+            request.getMethod(), 
+            request.getURI(), 
+            request.getRemoteAddress());
+        
+        return chain.filter(modifiedExchange)
+            .doFinally(signalType -> {
+                long endTime = System.currentTimeMillis();
+                long duration = endTime - startTime;
+                
+                log.info("Request ID: {}, Status: {}, Duration: {}ms, Signal: {}", 
+                    requestId, 
+                    response.getStatusCode(), 
+                    duration, 
+                    signalType);
+            });
+    }
+    
+    @Override
+    public int getOrder() {
+        return -1; // Execute before other filters
+    }
+}
+
+// Authentication Filter
+@Component
+@Slf4j
+public class AuthenticationFilter implements GlobalFilter, Ordered {
+    
+    @Autowired
+    private JwtUtil jwtUtil;
+    
+    private static final List<String> OPEN_API_ENDPOINTS = Arrays.asList(
+        "/api/auth/login",
+        "/api/auth/register",
+        "/api/health",
+        "/actuator/health"
+    );
+    
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        ServerHttpRequest request = exchange.getRequest();
+        String path = request.getPath().value();
+        
+        // Skip authentication for open endpoints
+        if (OPEN_API_ENDPOINTS.stream().anyMatch(path::startsWith)) {
+            return chain.filter(exchange);
+        }
+        
+        // Extract JWT token
+        String token = extractToken(request);
+        if (token == null) {
+            return onError(exchange, "Missing authentication token", HttpStatus.UNAUTHORIZED);
+        }
+        
+        try {
+            // Validate JWT token
+            if (!jwtUtil.validateToken(token)) {
+                return onError(exchange, "Invalid authentication token", HttpStatus.UNAUTHORIZED);
+            }
+            
+            // Extract user information from token
+            String username = jwtUtil.getUsernameFromToken(token);
+            List<String> roles = jwtUtil.getRolesFromToken(token);
+            
+            // Add user information to request headers
+            ServerHttpRequest modifiedRequest = request.mutate()
+                .header("X-User-Name", username)
+                .header("X-User-Roles", String.join(",", roles))
+                .build();
+            
+            ServerWebExchange modifiedExchange = exchange.mutate()
+                .request(modifiedRequest)
+                .build();
+            
+            return chain.filter(modifiedExchange);
+            
+        } catch (Exception e) {
+            log.error("Authentication error: {}", e.getMessage());
+            return onError(exchange, "Authentication failed", HttpStatus.UNAUTHORIZED);
+        }
+    }
+    
+    private String extractToken(ServerHttpRequest request) {
+        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+        return null;
+    }
+    
+    private Mono<Void> onError(ServerWebExchange exchange, String message, HttpStatus status) {
+        ServerHttpResponse response = exchange.getResponse();
+        response.setStatusCode(status);
+        response.getHeaders().add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+        
+        String body = "{\"error\":\"" + message + "\",\"timestamp\":\"" + Instant.now() + "\"}";
+        DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
+        
+        return response.writeWith(Mono.just(buffer));
+    }
+    
+    @Override
+    public int getOrder() {
+        return 0; // Execute after logging filter
+    }
+}
+
+// Custom Gateway Filter Factory
+@Component
+public class CustomHeaderGatewayFilterFactory extends AbstractGatewayFilterFactory<CustomHeaderGatewayFilterFactory.Config> {
+    
+    public CustomHeaderGatewayFilterFactory() {
+        super(Config.class);
+    }
+    
+    @Override
+    public GatewayFilter apply(Config config) {
+        return (exchange, chain) -> {
+            ServerHttpRequest request = exchange.getRequest();
+            
+            ServerHttpRequest modifiedRequest = request.mutate()
+                .header(config.getHeaderName(), config.getHeaderValue())
+                .build();
+            
+            ServerWebExchange modifiedExchange = exchange.mutate()
+                .request(modifiedRequest)
+                .build();
+            
+            return chain.filter(modifiedExchange);
+        };
+    }
+    
+    @Override
+    public List<String> shortcutFieldOrder() {
+        return Arrays.asList("headerName", "headerValue");
+    }
+    
+    public static class Config {
+        private String headerName;
+        private String headerValue;
+        
+        // Getters and setters
+        public String getHeaderName() { return headerName; }
+        public void setHeaderName(String headerName) { this.headerName = headerName; }
+        public String getHeaderValue() { return headerValue; }
+        public void setHeaderValue(String headerValue) { this.headerValue = headerValue; }
+    }
+}
+
+// Fallback Controller
+@RestController
+@RequestMapping("/fallback")
+@Slf4j
+public class FallbackController {
+    
+    @GetMapping("/users")
+    public ResponseEntity<Map<String, Object>> userServiceFallback(ServerHttpRequest request) {
+        log.warn("User service fallback triggered for: {}", request.getURI());
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "User service is temporarily unavailable");
+        response.put("message", "Please try again later");
+        response.put("timestamp", Instant.now());
+        response.put("service", "user-service");
+        
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+    }
+    
+    @GetMapping("/orders")
+    public ResponseEntity<Map<String, Object>> orderServiceFallback(ServerHttpRequest request) {
+        log.warn("Order service fallback triggered for: {}", request.getURI());
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "Order service is temporarily unavailable");
+        response.put("message", "Please try again later");
+        response.put("timestamp", Instant.now());
+        response.put("service", "order-service");
+        
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+    }
+    
+    @RequestMapping("/**")
+    public ResponseEntity<Map<String, Object>> genericFallback(ServerHttpRequest request) {
+        log.warn("Generic fallback triggered for: {}", request.getURI());
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "Service temporarily unavailable");
+        response.put("message", "The requested service is currently down. Please try again later.");
+        response.put("timestamp", Instant.now());
+        response.put("path", request.getURI().getPath());
+        
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+    }
+}
+
+// Gateway Metrics and Health
+@RestController
+@RequestMapping("/gateway")
+public class GatewayController {
+    
+    @Autowired
+    private GatewayMetrics gatewayMetrics;
+    
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> health() {
+        Map<String, Object> health = new HashMap<>();
+        health.put("status", "UP");
+        health.put("timestamp", Instant.now());
+        health.put("service", "api-gateway");
+        health.put("version", "1.0.0");
+        
+        return ResponseEntity.ok(health);
+    }
+    
+    @GetMapping("/metrics")
+    public ResponseEntity<Map<String, Object>> metrics() {
+        Map<String, Object> metrics = new HashMap<>();
+        
+        // Custom metrics
+        metrics.put("total_requests", gatewayMetrics.getTotalRequests());
+        metrics.put("active_routes", gatewayMetrics.getActiveRoutes());
+        metrics.put("error_rate", gatewayMetrics.getErrorRate());
+        metrics.put("average_response_time", gatewayMetrics.getAverageResponseTime());
+        
+        return ResponseEntity.ok(metrics);
+    }
+    
+    @GetMapping("/routes")
+    public ResponseEntity<List<Map<String, Object>>> routes(RouteLocator routeLocator) {
+        return ResponseEntity.ok(
+            routeLocator.getRoutes()
+                .map(route -> {
+                    Map<String, Object> routeInfo = new HashMap<>();
+                    routeInfo.put("id", route.getId());
+                    routeInfo.put("uri", route.getUri());
+                    routeInfo.put("order", route.getOrder());
+                    routeInfo.put("predicates", route.getPredicates());
+                    return routeInfo;
+                })
+                .collectList()
+                .block()
+        );
+    }
+}
+
+// Configuration Properties
+@ConfigurationProperties(prefix = "gateway")
+@Data
+public class GatewayProperties {
+    private Security security = new Security();
+    private RateLimit rateLimit = new RateLimit();
+    private Circuit circuit = new Circuit();
+    
+    @Data
+    public static class Security {
+        private boolean enabled = true;
+        private String jwtSecret = "defaultSecret";
+        private long jwtExpiration = 86400;
+        private List<String> allowedOrigins = Arrays.asList("*");
+    }
+    
+    @Data
+    public static class RateLimit {
+        private boolean enabled = true;
+        private int defaultReplenishRate = 10;
+        private int defaultBurstCapacity = 20;
+        private int defaultRequestedTokens = 1;
+    }
+    
+    @Data
+    public static class Circuit {
+        private boolean enabled = true;
+        private int failureThreshold = 5;
+        private long timeoutDuration = 60000;
+        private int slidingWindowSize = 10;
+    }
+}
+
+// JWT Utility Class
+@Component
+public class JwtUtil {
+    
+    @Value("${gateway.security.jwt-secret:defaultSecret}")
+    private String secret;
+    
+    @Value("${gateway.security.jwt-expiration:86400}")
+    private long expiration;
+    
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parser().setSigningKey(secret).parseClaimsJws(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+    
+    public String getUsernameFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        return claims.getSubject();
+    }
+    
+    public List<String> getRolesFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        return (List<String>) claims.get("roles");
+    }
+    
+    public Date getExpirationDateFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        return claims.getExpiration();
+    }
+    
+    private Claims getClaimsFromToken(String token) {
+        return Jwts.parser()
+            .setSigningKey(secret)
+            .parseClaimsJws(token)
+            .getBody();
+    }
+    
+    public boolean isTokenExpired(String token) {
+        Date expiration = getExpirationDateFromToken(token);
+        return expiration.before(new Date());
+    }
+}
+
+// CORS Configuration
+@Configuration
+public class CorsConfig {
+    
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+    
+    @Bean
+    public WebFilter corsWebFilter() {
+        return new CorsWebFilter(corsConfigurationSource());
+    }
+}
+
+// Custom Predicate Factory
+@Component
+public class CustomPredicateFactory extends AbstractRoutePredicateFactory<CustomPredicateFactory.Config> {
+    
+    public CustomPredicateFactory() {
+        super(Config.class);
+    }
+    
+    @Override
+    public Predicate<ServerWebExchange> apply(Config config) {
+        return exchange -> {
+            ServerHttpRequest request = exchange.getRequest();
+            String headerValue = request.getHeaders().getFirst(config.getHeaderName());
+            
+            if (headerValue == null) {
+                return false;
+            }
+            
+            return headerValue.matches(config.getPattern());
+        };
+    }
+    
+    @Override
+    public List<String> shortcutFieldOrder() {
+        return Arrays.asList("headerName", "pattern");
+    }
+    
+    public static class Config {
+        private String headerName;
+        private String pattern;
+        
+        // Getters and setters
+        public String getHeaderName() { return headerName; }
+        public void setHeaderName(String headerName) { this.headerName = headerName; }
+        public String getPattern() { return pattern; }
+        public void setPattern(String pattern) { this.pattern = pattern; }
+    }
+}
+
+// Load Balancer Configuration
+@Configuration
+public class LoadBalancerConfig {
+    
+    @Bean
+    @LoadBalanced
+    public WebClient.Builder webClientBuilder() {
+        return WebClient.builder();
+    }
+    
+    @Bean
+    public ReactorLoadBalancerExchangeFilterFunction loadBalancerExchangeFilterFunction(
+            ReactiveLoadBalancer.Factory<ServiceInstance> loadBalancerFactory) {
+        return new ReactorLoadBalancerExchangeFilterFunction(loadBalancerFactory);
+    }
+}
+
+// Gateway Event Listener
+@Component
+@Slf4j
+public class GatewayEventListener {
+    
+    @EventListener
+    public void handleRefreshRoutesEvent(RefreshRoutesEvent event) {
+        log.info("Routes refreshed at: {}", Instant.now());
+    }
+    
+    @EventListener
+    public void handlePredicateArgsEvent(PredicateArgsEvent event) {
+        log.info("Predicate args event: {}", event);
+    }
+    
+    @EventListener
+    public void handleFilterArgsEvent(FilterArgsEvent event) {
+        log.info("Filter args event: {}", event);
+    }
+}
+
+// Application Properties Configuration
+/*
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      default-filters:
+        - AddRequestHeader=X-Gateway-Name, spring-cloud-gateway
+        - AddResponseHeader=X-Gateway-Response, spring-cloud-gateway
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      httpclient:
+        connect-timeout: 30000
+        response-timeout: 30s
+        pool:
+          max-connections: 100
+          max-idle-time: 30s
+      metrics:
+        enabled: true
+        tags:
+          path:
+            enabled: true
+          method:
+            enabled: true
+          outcome:
+            enabled: true
+          status:
+            enabled: true
+          uri:
+            enabled: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 60000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 90
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,httptrace,gateway
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web.reactive: DEBUG
+    reactor.netty: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+gateway:
+  security:
+    enabled: true
+    jwt-secret: mySecretKey
+    jwt-expiration: 86400
+    allowed-origins:
+      - http://localhost:3000
+      - http://localhost:8080
+  rate-limit:
+    enabled: true
+    default-replenish-rate: 10
+    default-burst-capacity: 20
+    default-requested-tokens: 1
+  circuit:
+    enabled: true
+    failure-threshold: 5
+    timeout-duration: 60000
+    sliding-window-size: 10
+*/
+
+// Integration Test
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@TestPropertySource(properties = {
+    "spring.cloud.config.enabled=false",
+    "eureka.client.enabled=false"
+})
+public class GatewayIntegrationTest {
+    
+    @Autowired
+    private WebTestClient webTestClient;
+    
+    @MockBean
+    private ReactiveLoadBalancer.Factory<ServiceInstance> loadBalancerFactory;
+    
+    @Test
+    public void testHealthEndpoint() {
+        webTestClient.get()
+            .uri("/gateway/health")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody()
+            .jsonPath("$.status").isEqualTo("UP")
+            .jsonPath("$.service").isEqualTo("api-gateway");
+    }
+    
+    @Test
+    public void testRateLimiting() {
+        // Make multiple requests to test rate limiting
+        for (int i = 0; i < 15; i++) {
+            WebTestClient.ResponseSpec response = webTestClient.get()
+                .uri("/api/users/1")
+                .header("X-User-ID", "test-user")
+                .exchange();
+            
+            if (i < 10) {
+                response.expectStatus().isOk();
+            } else {
+                response.expectStatus().isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+            }
+        }
+    }
+    
+    @Test
+    public void testAuthenticationFilter() {
+        // Test without token
+        webTestClient.get()
+            .uri("/api/users/1")
+            .exchange()
+            .expectStatus().isUnauthorized();
+        
+        // Test with valid token
+        String validToken = "valid-jwt-token";
+        webTestClient.get()
+            .uri("/api/users/1")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken)
+            .exchange()
+            .expectStatus().isOk();
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What is Spring Cloud Gateway built on?
+   a) Spring MVC and Servlet API
+   b) Spring WebFlux and Project Reactor
+   c) Spring Boot and Tomcat
+   d) Spring Security and OAuth2
+   Answer: b) Spring WebFlux and Project Reactor
+
+2. What are the main components of a Gateway route?
+   a) ID, URI, predicates, filters
+   b) Name, path, methods, headers
+   c) Service, port, protocol, timeout
+   d) Host, endpoint, version, status
+   Answer: a) ID, URI, predicates, filters
+
+3. Which predicate matches HTTP request paths?
+   a) PathPredicate
+   b) Path
+   c) RoutePathPredicate
+   d) PathMatchPredicate
+   Answer: b) Path
+
+4. What does the @LoadBalanced annotation enable?
+   a) Server load balancing
+   b) Client-side load balancing
+   c) Database load balancing
+   d) Memory load balancing
+   Answer: b) Client-side load balancing
+
+5. Which filter type modifies incoming requests?
+   a) Post-filter
+   b) Pre-filter
+   c) Global filter
+   d) Response filter
+   Answer: b) Pre-filter
+
+6. What is the purpose of RouteLocatorBuilder?
+   a) Builds route configurations
+   b) Locates route files
+   c) Creates route instances
+   d) Manages route lifecycle
+   Answer: a) Builds route configurations
+
+7. Which component provides rate limiting?
+   a) RateLimiter
+   b) RedisRateLimiter
+   c) GatewayRateLimiter
+   d) RequestRateLimiter
+   Answer: b) RedisRateLimiter
+
+8. What does the stripPrefix filter do?
+   a) Removes query parameters
+   b) Removes path segments from request
+   c) Removes headers
+   d) Removes request body
+   Answer: b) Removes path segments from request
+
+9. Which interface is used for custom global filters?
+   a) GatewayFilter
+   b) GlobalFilter
+   c) RouteFilter
+   d) CustomFilter
+   Answer: b) GlobalFilter
+
+10. What method determines filter execution order?
+    a) getPriority()
+    b) getOrder()
+    c) getSequence()
+    d) getPosition()
+    Answer: b) getOrder()
+
+11. Which predicate matches request methods?
+    a) MethodPredicate
+    b) Method
+    c) HttpMethodPredicate
+    d) RequestMethodPredicate
+    Answer: b) Method
+
+12. What does the circuitBreaker filter provide?
+    a) Circuit protection
+    b) Fallback mechanism for failed requests
+    c) Request breaking
+    d) Connection breaking
+    Answer: b) Fallback mechanism for failed requests
+
+13. Which header is commonly used for authentication?
+    a) X-Auth-Token
+    b) Authentication
+    c) Authorization
+    d) X-Authorization
+    Answer: c) Authorization
+
+14. What does KeyResolver determine in rate limiting?
+    a) Rate limit keys
+    b) User identification for rate limiting
+    c) Key generation strategy
+    d) Rate limit resolution
+    Answer: b) User identification for rate limiting
+
+15. Which filter factory creates custom request headers?
+    a) AddRequestHeaderGatewayFilterFactory
+    b) CustomHeaderFilterFactory
+    c) RequestHeaderFilterFactory
+    d) HeaderAddFilterFactory
+    Answer: a) AddRequestHeaderGatewayFilterFactory
+
+16. What is the default port for Spring Cloud Gateway?
+    a) 8080
+    b) 8090
+    c) 8761
+    d) 9090
+    Answer: a) 8080
+
+17. Which configuration enables service discovery integration?
+    a) spring.cloud.gateway.discovery.enabled
+    b) spring.cloud.gateway.discovery.locator.enabled
+    c) eureka.client.enabled
+    d) spring.cloud.discovery.enabled
+    Answer: b) spring.cloud.gateway.discovery.locator.enabled
+
+18. What does the between predicate match?
+    a) Time ranges
+    b) Date ranges
+    c) Both time and date ranges
+    d) Request intervals
+    Answer: c) Both time and date ranges
+
+19. Which actuator endpoint shows gateway routes?
+    a) /actuator/routes
+    b) /actuator/gateway
+    c) /actuator/gateway/routes
+    d) /actuator/gateway-routes
+    Answer: c) /actuator/gateway/routes
+
+20. What does the retry filter do?
+    a) Retries failed routes
+    b) Retries failed requests
+    c) Retries filter execution
+    d) Retries service discovery
+    Answer: b) Retries failed requests
+
+21. Which class is used for fallback responses?
+    a) FallbackHandler
+    b) FallbackController
+    c) GatewayFallback
+    d) RouteFallback
+    Answer: b) FallbackController
+
+22. What does the modifyRequestBody filter do?
+    a) Changes request content
+    b) Validates request body
+    c) Logs request body
+    d) Compresses request body
+    Answer: a) Changes request content
+
+23. Which property configures connection timeout?
+    a) spring.cloud.gateway.connect-timeout
+    b) spring.cloud.gateway.httpclient.connect-timeout
+    c) gateway.connection.timeout
+    d) spring.gateway.timeout
+    Answer: b) spring.cloud.gateway.httpclient.connect-timeout
+
+24. What does the weight predicate enable?
+    a) Request prioritization
+    b) Load balancing with weights
+    c) Traffic distribution
+    d) Route weighting
+    Answer: c) Traffic distribution
+
+25. Which testing class is used for Gateway integration tests?
+    a) TestRestTemplate
+    b) MockMvc
+    c) WebTestClient
+    d) RestAssured
+    Answer: c) WebTestClient
+
+====================================================================

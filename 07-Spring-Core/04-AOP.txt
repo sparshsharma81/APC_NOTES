@@ -1,0 +1,714 @@
+====================================================================
+                        ASPECT-ORIENTED PROGRAMMING (AOP)
+====================================================================
+
+INTRODUCTION:
+Aspect-Oriented Programming (AOP) is a programming paradigm that enables separation of cross-cutting concerns from business logic. In Spring AOP, aspects are used to modularize concerns like logging, security, transaction management, and performance monitoring that cut across multiple classes and methods.
+
+KEY CONCEPTS:
+
+1. AOP TERMINOLOGY:
+   - Aspect: Module that encapsulates cross-cutting concerns
+   - Join Point: Point in program execution (method call, exception)
+   - Pointcut: Expression that selects join points
+   - Advice: Action taken at join point (before, after, around)
+   - Target Object: Object being advised
+   - Weaving: Process of applying aspects to target objects
+
+2. ADVICE TYPES:
+   - @Before: Executes before method execution
+   - @After: Executes after method execution (finally)
+   - @AfterReturning: Executes after successful method return
+   - @AfterThrowing: Executes when method throws exception
+   - @Around: Wraps method execution (most powerful)
+
+3. POINTCUT EXPRESSIONS:
+   - execution(): Method execution join points
+   - within(): Within specific types or packages
+   - args(): Method arguments matching
+   - @annotation(): Methods with specific annotations
+   - bean(): Spring bean names matching
+
+4. SPRING AOP FEATURES:
+   - Proxy-based AOP implementation
+   - Method-level interception only
+   - Integration with Spring IoC container
+   - AspectJ annotation support
+   - Programmatic and declarative approaches
+
+5. COMMON USE CASES:
+   - Logging and auditing
+   - Security and authentication
+   - Transaction management
+   - Performance monitoring
+   - Exception handling
+   - Caching
+
+EXAMPLE CODE:
+
+import org.aspectj.lang.annotation.*;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.JoinPoint;
+import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
+
+// Enable AOP in Configuration
+@Configuration
+@EnableAspectJAutoProxy
+@ComponentScan(basePackages = "com.example")
+public class AopConfig {
+    // Configuration for AOP
+}
+
+// Basic Logging Aspect
+@Aspect
+@Component
+public class LoggingAspect {
+    
+    private static final Logger logger = LoggerFactory.getLogger(LoggingAspect.class);
+    
+    // Pointcut for all methods in service layer
+    @Pointcut("execution(* com.example.service.*.*(..))")
+    public void serviceLayer() {}
+    
+    // Pointcut for all methods in repository layer
+    @Pointcut("execution(* com.example.repository.*.*(..))")
+    public void repositoryLayer() {}
+    
+    // Combined pointcut
+    @Pointcut("serviceLayer() || repositoryLayer()")
+    public void applicationLayer() {}
+    
+    // Before advice
+    @Before("applicationLayer()")
+    public void logMethodEntry(JoinPoint joinPoint) {
+        String className = joinPoint.getTarget().getClass().getSimpleName();
+        String methodName = joinPoint.getSignature().getName();
+        Object[] args = joinPoint.getArgs();
+        
+        logger.info("Entering method: {}.{}() with arguments: {}", 
+                   className, methodName, Arrays.toString(args));
+    }
+    
+    // After advice (finally)
+    @After("applicationLayer()")
+    public void logMethodExit(JoinPoint joinPoint) {
+        String className = joinPoint.getTarget().getClass().getSimpleName();
+        String methodName = joinPoint.getSignature().getName();
+        
+        logger.info("Exiting method: {}.{}()", className, methodName);
+    }
+    
+    // After returning advice
+    @AfterReturning(pointcut = "applicationLayer()", returning = "result")
+    public void logMethodReturn(JoinPoint joinPoint, Object result) {
+        String className = joinPoint.getTarget().getClass().getSimpleName();
+        String methodName = joinPoint.getSignature().getName();
+        
+        logger.info("Method {}.{}() returned: {}", 
+                   className, methodName, result);
+    }
+    
+    // After throwing advice
+    @AfterThrowing(pointcut = "applicationLayer()", throwing = "exception")
+    public void logMethodException(JoinPoint joinPoint, Exception exception) {
+        String className = joinPoint.getTarget().getClass().getSimpleName();
+        String methodName = joinPoint.getSignature().getName();
+        
+        logger.error("Method {}.{}() threw exception: {}", 
+                    className, methodName, exception.getMessage(), exception);
+    }
+}
+
+// Performance Monitoring Aspect
+@Aspect
+@Component
+public class PerformanceAspect {
+    
+    private static final Logger logger = LoggerFactory.getLogger(PerformanceAspect.class);
+    
+    // Around advice for performance monitoring
+    @Around("execution(* com.example.service.*.*(..))")
+    public Object monitorPerformance(ProceedingJoinPoint joinPoint) throws Throwable {
+        String className = joinPoint.getTarget().getClass().getSimpleName();
+        String methodName = joinPoint.getSignature().getName();
+        
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            // Proceed with method execution
+            Object result = joinPoint.proceed();
+            
+            long endTime = System.currentTimeMillis();
+            long executionTime = endTime - startTime;
+            
+            logger.info("Method {}.{}() executed in {} ms", 
+                       className, methodName, executionTime);
+            
+            // Alert for slow methods
+            if (executionTime > 1000) {
+                logger.warn("SLOW METHOD DETECTED: {}.{}() took {} ms", 
+                           className, methodName, executionTime);
+            }
+            
+            return result;
+            
+        } catch (Throwable throwable) {
+            long endTime = System.currentTimeMillis();
+            long executionTime = endTime - startTime;
+            
+            logger.error("Method {}.{}() failed after {} ms", 
+                        className, methodName, executionTime);
+            throw throwable;
+        }
+    }
+}
+
+// Security Aspect
+@Aspect
+@Component
+public class SecurityAspect {
+    
+    private static final Logger logger = LoggerFactory.getLogger(SecurityAspect.class);
+    
+    @Autowired
+    private SecurityContext securityContext;
+    
+    // Pointcut for methods requiring authentication
+    @Pointcut("@annotation(com.example.annotation.RequiresAuthentication)")
+    public void requiresAuthentication() {}
+    
+    // Pointcut for methods requiring specific roles
+    @Pointcut("@annotation(com.example.annotation.RequiresRole)")
+    public void requiresRole() {}
+    
+    // Before advice for authentication check
+    @Before("requiresAuthentication()")
+    public void checkAuthentication(JoinPoint joinPoint) {
+        if (!securityContext.isAuthenticated()) {
+            String methodName = joinPoint.getSignature().getName();
+            logger.warn("Unauthorized access attempt to method: {}", methodName);
+            throw new SecurityException("Authentication required for method: " + methodName);
+        }
+    }
+    
+    // Before advice for role-based authorization
+    @Before("requiresRole() && @annotation(requiresRole)")
+    public void checkRole(JoinPoint joinPoint, RequiresRole requiresRole) {
+        String requiredRole = requiresRole.value();
+        String currentUserRole = securityContext.getCurrentUserRole();
+        
+        if (!requiredRole.equals(currentUserRole)) {
+            String methodName = joinPoint.getSignature().getName();
+            logger.warn("Access denied for user with role {} to method {} requiring role {}", 
+                       currentUserRole, methodName, requiredRole);
+            throw new SecurityException("Insufficient privileges for method: " + methodName);
+        }
+    }
+}
+
+// Custom Annotations for AOP
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface RequiresAuthentication {
+}
+
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface RequiresRole {
+    String value();
+}
+
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Cacheable {
+    String value() default "";
+    int ttl() default 300; // Time to live in seconds
+}
+
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Audit {
+    String operation() default "";
+    boolean logParameters() default true;
+    boolean logResult() default false;
+}
+
+// Caching Aspect
+@Aspect
+@Component
+public class CachingAspect {
+    
+    private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
+    private static final Logger logger = LoggerFactory.getLogger(CachingAspect.class);
+    
+    @Around("@annotation(cacheable)")
+    public Object handleCaching(ProceedingJoinPoint joinPoint, Cacheable cacheable) throws Throwable {
+        // Generate cache key
+        String cacheKey = generateCacheKey(joinPoint, cacheable.value());
+        
+        // Check if result is in cache and not expired
+        CacheEntry entry = cache.get(cacheKey);
+        if (entry != null && !entry.isExpired(cacheable.ttl())) {
+            logger.debug("Cache hit for key: {}", cacheKey);
+            return entry.getValue();
+        }
+        
+        // Execute method and cache result
+        Object result = joinPoint.proceed();
+        cache.put(cacheKey, new CacheEntry(result, System.currentTimeMillis()));
+        logger.debug("Cached result for key: {}", cacheKey);
+        
+        return result;
+    }
+    
+    private String generateCacheKey(ProceedingJoinPoint joinPoint, String customKey) {
+        if (!customKey.isEmpty()) {
+            return customKey;
+        }
+        
+        StringBuilder keyBuilder = new StringBuilder();
+        keyBuilder.append(joinPoint.getTarget().getClass().getSimpleName());
+        keyBuilder.append(".");
+        keyBuilder.append(joinPoint.getSignature().getName());
+        keyBuilder.append("(");
+        
+        Object[] args = joinPoint.getArgs();
+        for (int i = 0; i < args.length; i++) {
+            if (i > 0) keyBuilder.append(",");
+            keyBuilder.append(args[i] != null ? args[i].toString() : "null");
+        }
+        keyBuilder.append(")");
+        
+        return keyBuilder.toString();
+    }
+    
+    static class CacheEntry {
+        private final Object value;
+        private final long timestamp;
+        
+        public CacheEntry(Object value, long timestamp) {
+            this.value = value;
+            this.timestamp = timestamp;
+        }
+        
+        public Object getValue() {
+            return value;
+        }
+        
+        public boolean isExpired(int ttlSeconds) {
+            return (System.currentTimeMillis() - timestamp) > (ttlSeconds * 1000L);
+        }
+    }
+}
+
+// Audit Aspect
+@Aspect
+@Component
+public class AuditAspect {
+    
+    private static final Logger auditLogger = LoggerFactory.getLogger("AUDIT");
+    
+    @Autowired
+    private AuditRepository auditRepository;
+    
+    @Autowired
+    private SecurityContext securityContext;
+    
+    @Around("@annotation(audit)")
+    public Object auditMethodExecution(ProceedingJoinPoint joinPoint, Audit audit) throws Throwable {
+        String operation = audit.operation().isEmpty() ? 
+            joinPoint.getSignature().getName() : audit.operation();
+        
+        String user = securityContext.getCurrentUsername();
+        String className = joinPoint.getTarget().getClass().getSimpleName();
+        String methodName = joinPoint.getSignature().getName();
+        
+        AuditRecord record = new AuditRecord();
+        record.setOperation(operation);
+        record.setUser(user);
+        record.setClassName(className);
+        record.setMethodName(methodName);
+        record.setTimestamp(LocalDateTime.now());
+        
+        if (audit.logParameters()) {
+            record.setParameters(Arrays.toString(joinPoint.getArgs()));
+        }
+        
+        try {
+            Object result = joinPoint.proceed();
+            
+            record.setStatus("SUCCESS");
+            if (audit.logResult() && result != null) {
+                record.setResult(result.toString());
+            }
+            
+            auditLogger.info("AUDIT: {} - {} by {} - SUCCESS", operation, methodName, user);
+            auditRepository.save(record);
+            
+            return result;
+            
+        } catch (Throwable throwable) {
+            record.setStatus("FAILURE");
+            record.setErrorMessage(throwable.getMessage());
+            
+            auditLogger.error("AUDIT: {} - {} by {} - FAILURE: {}", 
+                             operation, methodName, user, throwable.getMessage());
+            auditRepository.save(record);
+            
+            throw throwable;
+        }
+    }
+}
+
+// Transaction Management Aspect (Custom)
+@Aspect
+@Component
+@Order(1) // Ensure this runs before other aspects
+public class TransactionAspect {
+    
+    private static final Logger logger = LoggerFactory.getLogger(TransactionAspect.class);
+    
+    @Around("@annotation(org.springframework.transaction.annotation.Transactional)")
+    public Object manageTransaction(ProceedingJoinPoint joinPoint) throws Throwable {
+        String methodName = joinPoint.getSignature().getName();
+        logger.debug("Starting transaction for method: {}", methodName);
+        
+        TransactionStatus status = null;
+        try {
+            // Begin transaction
+            status = TransactionManager.beginTransaction();
+            
+            // Execute method
+            Object result = joinPoint.proceed();
+            
+            // Commit transaction
+            TransactionManager.commit(status);
+            logger.debug("Transaction committed for method: {}", methodName);
+            
+            return result;
+            
+        } catch (Throwable throwable) {
+            // Rollback transaction
+            if (status != null) {
+                TransactionManager.rollback(status);
+                logger.debug("Transaction rolled back for method: {}", methodName);
+            }
+            throw throwable;
+        }
+    }
+}
+
+// Service Layer with AOP Annotations
+@Service
+public class UserService {
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @RequiresAuthentication
+    @Audit(operation = "CREATE_USER", logParameters = true)
+    @Cacheable(value = "user-cache", ttl = 600)
+    public User createUser(String username, String email, String password) {
+        User user = new User(username, email, password);
+        return userRepository.save(user);
+    }
+    
+    @RequiresRole("ADMIN")
+    @Audit(operation = "DELETE_USER", logParameters = true)
+    public void deleteUser(Long userId) {
+        userRepository.deleteById(userId);
+    }
+    
+    @Cacheable(value = "users-list", ttl = 300)
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+    
+    @RequiresAuthentication
+    @Audit(operation = "UPDATE_USER", logParameters = true, logResult = true)
+    public User updateUser(Long userId, String newEmail) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new UserNotFoundException("User not found: " + userId));
+        
+        user.setEmail(newEmail);
+        return userRepository.save(user);
+    }
+}
+
+// Complex Pointcut Examples
+@Aspect
+@Component
+public class AdvancedPointcutAspect {
+    
+    // Method execution in specific package
+    @Pointcut("execution(* com.example.service..*.*(..))")
+    public void inServicePackage() {}
+    
+    // Methods with specific parameter types
+    @Pointcut("execution(* *(String, Long))")
+    public void methodsWithStringAndLongParams() {}
+    
+    // Methods returning specific type
+    @Pointcut("execution(com.example.model.User *.*(..))")
+    public void methodsReturningUser() {}
+    
+    // Methods with annotations
+    @Pointcut("@annotation(org.springframework.web.bind.annotation.RequestMapping)")
+    public void requestMappingMethods() {}
+    
+    // Bean-based pointcut
+    @Pointcut("bean(*Service)")
+    public void serviceBeans() {}
+    
+    // Within specific class hierarchy
+    @Pointcut("within(com.example.service.BaseService+)")
+    public void withinBaseServiceHierarchy() {}
+    
+    // Combination pointcut
+    @Pointcut("inServicePackage() && methodsReturningUser() && serviceBeans()")
+    public void complexPointcut() {}
+    
+    @Before("complexPointcut()")
+    public void adviceForComplexPointcut(JoinPoint joinPoint) {
+        // Advice logic here
+    }
+}
+
+// Exception Handling Aspect
+@Aspect
+@Component
+public class ExceptionHandlingAspect {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ExceptionHandlingAspect.class);
+    
+    @AfterThrowing(pointcut = "execution(* com.example.service.*.*(..))", throwing = "exception")
+    public void handleServiceException(JoinPoint joinPoint, Exception exception) {
+        String methodName = joinPoint.getSignature().getName();
+        String className = joinPoint.getTarget().getClass().getSimpleName();
+        
+        // Log the exception
+        logger.error("Exception in {}.{}: {}", className, methodName, exception.getMessage());
+        
+        // Send notification for critical exceptions
+        if (exception instanceof DataAccessException) {
+            notificationService.sendAlert("Database error in " + className + "." + methodName);
+        }
+        
+        // Custom exception transformation
+        if (exception instanceof IllegalArgumentException) {
+            // Could throw a more specific business exception
+            logger.warn("Invalid argument in {}.{}: {}", className, methodName, exception.getMessage());
+        }
+    }
+}
+
+// Testing AOP
+@SpringBootTest
+@TestPropertySource(properties = "spring.aop.auto=true")
+public class AopIntegrationTest {
+    
+    @Autowired
+    private UserService userService;
+    
+    @MockBean
+    private UserRepository userRepository;
+    
+    @Test
+    public void testAopAdviceExecution() {
+        // Arrange
+        User mockUser = new User("testuser", "test@example.com", "password");
+        when(userRepository.save(any(User.class))).thenReturn(mockUser);
+        
+        // Act
+        User result = userService.createUser("testuser", "test@example.com", "password");
+        
+        // Assert
+        assertNotNull(result);
+        assertEquals("testuser", result.getUsername());
+        
+        // Verify that repository method was called (AOP didn't interfere)
+        verify(userRepository).save(any(User.class));
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What does AOP stand for?
+   a) Abstract Object Programming
+   b) Aspect-Oriented Programming
+   c) Advanced Object Processing
+   d) Application Oriented Programming
+   Answer: b) Aspect-Oriented Programming
+
+2. What is a cross-cutting concern?
+   a) Intersecting objects
+   b) Functionality that spans multiple modules
+   c) Complex business logic
+   d) Database relationships
+   Answer: b) Functionality that spans multiple modules
+
+3. What is a Join Point in AOP?
+   a) Where aspects join together
+   b) Point in program execution where advice can be applied
+   c) Database connection point
+   d) Method parameter
+   Answer: b) Point in program execution where advice can be applied
+
+4. What is a Pointcut?
+   a) Point where code stops
+   b) Expression that selects join points
+   c) Debugging breakpoint
+   d) Method return point
+   Answer: b) Expression that selects join points
+
+5. Which advice executes before method execution?
+   a) @After
+   b) @Before
+   c) @Around
+   d) @AfterReturning
+   Answer: b) @Before
+
+6. Which advice can control method execution?
+   a) @Before
+   b) @After
+   c) @Around
+   d) @AfterThrowing
+   Answer: c) @Around
+
+7. What annotation enables AspectJ support in Spring?
+   a) @EnableAOP
+   b) @EnableAspectJAutoProxy
+   c) @AspectJSupport
+   d) @AOPConfig
+   Answer: b) @EnableAspectJAutoProxy
+
+8. What does @Aspect annotation do?
+   a) Creates aspect ratio
+   b) Marks a class as an aspect
+   c) Enables aspect scanning
+   d) Configures aspect properties
+   Answer: b) Marks a class as an aspect
+
+9. Which advice executes when method throws exception?
+   a) @AfterThrowing
+   b) @OnException
+   c) @CatchException
+   d) @HandleException
+   Answer: a) @AfterThrowing
+
+10. What is weaving in AOP?
+    a) Combining aspects
+    b) Process of applying aspects to target objects
+    c) Creating aspect threads
+    d) Binding aspect methods
+    Answer: b) Process of applying aspects to target objects
+
+11. Which pointcut expression matches method execution?
+    a) method()
+    b) execution()
+    c) call()
+    d) invoke()
+    Answer: b) execution()
+
+12. How do you access method arguments in advice?
+    a) getArgs()
+    b) joinPoint.getArgs()
+    c) args.get()
+    d) method.getParameters()
+    Answer: b) joinPoint.getArgs()
+
+13. What does @AfterReturning advice do?
+    a) Returns after method
+    b) Executes after successful method return
+    c) Returns method result
+    d) Executes after any return
+    Answer: b) Executes after successful method return
+
+14. Which parameter gets the return value in @AfterReturning?
+    a) result
+    b) returning = "variableName"
+    c) returnValue
+    d) output
+    Answer: b) returning = "variableName"
+
+15. What is ProceedingJoinPoint used for?
+    a) Processing join points
+    b) In @Around advice to proceed with method execution
+    c) Joining multiple points
+    d) Processing method parameters
+    Answer: b) In @Around advice to proceed with method execution
+
+16. How do you specify pointcut for methods with specific annotation?
+    a) @annotation(AnnotationName)
+    b) @hasAnnotation(AnnotationName)
+    c) @withAnnotation(AnnotationName)
+    d) @annotated(AnnotationName)
+    Answer: a) @annotation(AnnotationName)
+
+17. What does within() pointcut do?
+    a) Points within method
+    b) Matches join points within specific types
+    c) Points within loop
+    d) Matches internal methods
+    Answer: b) Matches join points within specific types
+
+18. How do you combine multiple pointcuts with AND?
+    a) pointcut1 && pointcut2
+    b) pointcut1 AND pointcut2
+    c) pointcut1 + pointcut2
+    d) pointcut1.and(pointcut2)
+    Answer: a) pointcut1 && pointcut2
+
+19. What is the purpose of @Order annotation in aspects?
+    a) Orders method execution
+    b) Controls aspect execution order
+    c) Orders join points
+    d) Sorts aspect methods
+    Answer: b) Controls aspect execution order
+
+20. Which advice always executes regardless of method outcome?
+    a) @Before
+    b) @After
+    c) @AfterReturning
+    d) @AfterThrowing
+    Answer: b) @After
+
+21. How do you get method signature in advice?
+    a) joinPoint.getSignature()
+    b) joinPoint.getMethod()
+    c) joinPoint.signature()
+    d) joinPoint.methodInfo()
+    Answer: a) joinPoint.getSignature()
+
+22. What does bean() pointcut match?
+    a) Bean definitions
+    b) Spring beans by name pattern
+    c) Bean properties
+    d) Bean methods
+    Answer: b) Spring beans by name pattern
+
+23. Which AOP implementation does Spring use by default?
+    a) AspectJ weaving
+    b) CGLIB proxies
+    c) JDK dynamic proxies
+    d) Depends on target class
+    Answer: d) Depends on target class
+
+24. What happens if advice throws an exception?
+    a) Method continues normally
+    b) Original method is not called
+    c) Exception propagates to caller
+    d) Exception is ignored
+    Answer: c) Exception propagates to caller
+
+25. Can AOP intercept private methods in Spring?
+    a) Yes, all methods
+    b) No, only public methods
+    c) Only with AspectJ weaving
+    d) Only protected methods
+    Answer: b) No, only public methods (in proxy-based AOP)
+
+====================================================================

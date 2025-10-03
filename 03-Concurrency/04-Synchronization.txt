@@ -1,0 +1,484 @@
+====================================================================
+                            SYNCHRONIZATION IN JAVA
+====================================================================
+
+INTRODUCTION:
+Synchronization is the mechanism to control access to shared resources by multiple threads. It prevents race conditions and ensures thread safety by allowing only one thread to access critical sections at a time.
+
+KEY CONCEPTS:
+
+1. RACE CONDITIONS:
+   - Multiple threads accessing shared data simultaneously
+   - Results depend on timing of thread execution
+   - Can lead to inconsistent or corrupted data
+   - Prevention requires proper synchronization
+
+2. SYNCHRONIZED KEYWORD:
+   - Method-level synchronization
+   - Block-level synchronization
+   - Uses intrinsic locks (monitor locks)
+   - Provides mutual exclusion and visibility
+
+3. LOCKS AND MONITORS:
+   - Every object has an intrinsic lock
+   - Thread must acquire lock before entering synchronized code
+   - Lock is released when exiting synchronized code
+   - Other threads wait until lock is available
+
+4. TYPES OF SYNCHRONIZATION:
+   - Mutual Exclusion: Only one thread in critical section
+   - Cooperation: Threads coordinate using wait/notify
+   - Atomic operations: Indivisible operations
+   - Lock-free programming: Using atomic classes
+
+5. ADVANCED SYNCHRONIZATION:
+   - ReentrantLock: Explicit locking with more features
+   - ReadWriteLock: Separate locks for reading and writing
+   - Semaphore: Controls number of accessing threads
+   - CountDownLatch: Wait for multiple threads to complete
+
+EXAMPLE CODE:
+
+// Race condition example - UNSAFE
+class UnsafeCounter {
+    private int count = 0;
+    
+    public void increment() {
+        count++;  // Not atomic: read-modify-write
+    }
+    
+    public int getCount() {
+        return count;
+    }
+}
+
+// Thread-safe with synchronized method
+class SafeCounter {
+    private int count = 0;
+    
+    public synchronized void increment() {
+        count++;  // Now atomic due to synchronization
+    }
+    
+    public synchronized int getCount() {
+        return count;
+    }
+}
+
+// Synchronized block example
+class BankAccount {
+    private double balance = 0.0;
+    private final Object lock = new Object();
+    
+    public void deposit(double amount) {
+        synchronized (lock) {  // Synchronized block
+            balance += amount;
+            System.out.println("Deposited: " + amount + ", Balance: " + balance);
+        }
+    }
+    
+    public void withdraw(double amount) {
+        synchronized (lock) {
+            if (balance >= amount) {
+                balance -= amount;
+                System.out.println("Withdrawn: " + amount + ", Balance: " + balance);
+            } else {
+                System.out.println("Insufficient funds");
+            }
+        }
+    }
+    
+    public synchronized double getBalance() {
+        return balance;
+    }
+}
+
+// Producer-Consumer with wait/notify
+class ProducerConsumer {
+    private final List<Integer> buffer = new ArrayList<>();
+    private final int capacity = 5;
+    private final Object lock = new Object();
+    
+    public void produce() throws InterruptedException {
+        int value = 0;
+        while (true) {
+            synchronized (lock) {
+                while (buffer.size() == capacity) {
+                    lock.wait();  // Wait if buffer is full
+                }
+                
+                buffer.add(value);
+                System.out.println("Produced: " + value);
+                value++;
+                
+                lock.notifyAll();  // Notify waiting consumers
+            }
+            Thread.sleep(1000);
+        }
+    }
+    
+    public void consume() throws InterruptedException {
+        while (true) {
+            synchronized (lock) {
+                while (buffer.isEmpty()) {
+                    lock.wait();  // Wait if buffer is empty
+                }
+                
+                int value = buffer.remove(0);
+                System.out.println("Consumed: " + value);
+                
+                lock.notifyAll();  // Notify waiting producers
+            }
+            Thread.sleep(1500);
+        }
+    }
+}
+
+// ReentrantLock example
+class ReentrantLockExample {
+    private final ReentrantLock lock = new ReentrantLock();
+    private int count = 0;
+    
+    public void increment() {
+        lock.lock();
+        try {
+            count++;
+            System.out.println("Count: " + count);
+        } finally {
+            lock.unlock();  // Always unlock in finally
+        }
+    }
+    
+    public void tryIncrement() {
+        if (lock.tryLock()) {  // Non-blocking lock attempt
+            try {
+                count++;
+                System.out.println("Acquired lock, count: " + count);
+            } finally {
+                lock.unlock();
+            }
+        } else {
+            System.out.println("Could not acquire lock");
+        }
+    }
+    
+    public void timedIncrement() throws InterruptedException {
+        if (lock.tryLock(2, TimeUnit.SECONDS)) {  // Timeout
+            try {
+                count++;
+                System.out.println("Acquired lock within timeout");
+            } finally {
+                lock.unlock();
+            }
+        } else {
+            System.out.println("Timeout while waiting for lock");
+        }
+    }
+}
+
+// ReadWriteLock example
+class ReadWriteExample {
+    private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
+    private final Lock readLock = rwLock.readLock();
+    private final Lock writeLock = rwLock.writeLock();
+    private String data = "Initial Data";
+    
+    public String readData() {
+        readLock.lock();
+        try {
+            Thread.sleep(100); // Simulate read operation
+            return data;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        } finally {
+            readLock.unlock();
+        }
+    }
+    
+    public void writeData(String newData) {
+        writeLock.lock();
+        try {
+            Thread.sleep(200); // Simulate write operation
+            data = newData;
+            System.out.println("Data updated to: " + data);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            writeLock.unlock();
+        }
+    }
+}
+
+// Semaphore example - Connection pool
+class ConnectionPool {
+    private final Semaphore semaphore;
+    private final List<Connection> connections;
+    
+    public ConnectionPool(int poolSize) {
+        semaphore = new Semaphore(poolSize);
+        connections = new ArrayList<>(poolSize);
+        for (int i = 0; i < poolSize; i++) {
+            connections.add(new Connection("Connection-" + i));
+        }
+    }
+    
+    public Connection getConnection() throws InterruptedException {
+        semaphore.acquire();  // Acquire permit
+        return getNextAvailableConnection();
+    }
+    
+    public void releaseConnection(Connection connection) {
+        if (releaseConnectionToPool(connection)) {
+            semaphore.release();  // Release permit
+        }
+    }
+    
+    private Connection getNextAvailableConnection() {
+        // Return available connection from pool
+        return connections.get(0); // Simplified
+    }
+    
+    private boolean releaseConnectionToPool(Connection connection) {
+        // Return connection to pool
+        return true; // Simplified
+    }
+    
+    static class Connection {
+        private final String name;
+        Connection(String name) { this.name = name; }
+        @Override
+        public String toString() { return name; }
+    }
+}
+
+// CountDownLatch example
+class CountDownLatchExample {
+    public void demonstrateCountDownLatch() throws InterruptedException {
+        int numThreads = 3;
+        CountDownLatch latch = new CountDownLatch(numThreads);
+        
+        for (int i = 0; i < numThreads; i++) {
+            final int threadId = i;
+            Thread worker = new Thread(() -> {
+                try {
+                    Thread.sleep(1000 + threadId * 500); // Different work times
+                    System.out.println("Thread " + threadId + " completed");
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    latch.countDown();  // Decrement counter
+                }
+            });
+            worker.start();
+        }
+        
+        latch.await();  // Wait for all threads to complete
+        System.out.println("All threads completed, continuing...");
+    }
+}
+
+// Atomic operations example
+class AtomicExample {
+    private final AtomicInteger atomicCounter = new AtomicInteger(0);
+    private final AtomicReference<String> atomicString = new AtomicReference<>("Initial");
+    
+    public void demonstrateAtomic() {
+        // Atomic increment
+        int newValue = atomicCounter.incrementAndGet();
+        System.out.println("New counter value: " + newValue);
+        
+        // Compare and swap
+        boolean updated = atomicCounter.compareAndSet(1, 10);
+        System.out.println("CAS successful: " + updated);
+        
+        // Atomic reference update
+        String oldValue = atomicString.getAndSet("Updated");
+        System.out.println("Old value: " + oldValue);
+        
+        // Compare and swap for reference
+        boolean refUpdated = atomicString.compareAndSet("Updated", "Final");
+        System.out.println("Reference CAS successful: " + refUpdated);
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What is synchronization in Java?
+   a) Running threads at same time
+   b) Controlling access to shared resources
+   c) Thread scheduling
+   d) Memory management
+   Answer: b) Controlling access to shared resources
+
+2. What is a race condition?
+   a) Threads running very fast
+   b) Competition between threads
+   c) Multiple threads accessing shared data without proper synchronization
+   d) Thread scheduling conflict
+   Answer: c) Multiple threads accessing shared data without proper synchronization
+
+3. What does synchronized keyword provide?
+   a) Only mutual exclusion
+   b) Only visibility
+   c) Both mutual exclusion and visibility
+   d) Performance improvement
+   Answer: c) Both mutual exclusion and visibility
+
+4. What is an intrinsic lock?
+   a) Lock inside objects
+   b) Monitor lock associated with every object
+   c) Hardware lock
+   d) JVM lock
+   Answer: b) Monitor lock associated with every object
+
+5. Which is correct about synchronized methods?
+   a) Uses object's intrinsic lock
+   b) For static methods, uses class lock
+   c) Both a and b
+   d) Uses thread-specific lock
+   Answer: c) Both a and b
+
+6. What happens when thread calls wait()?
+   a) Thread sleeps
+   b) Thread releases lock and waits
+   c) Thread stops execution
+   d) Thread continues execution
+   Answer: b) Thread releases lock and waits
+
+7. What does notify() do?
+   a) Notifies all waiting threads
+   b) Notifies one waiting thread
+   c) Notifies the JVM
+   d) Notifies parent thread
+   Answer: b) Notifies one waiting thread
+
+8. What is the difference between notify() and notifyAll()?
+   a) No difference
+   b) notify() wakes one thread, notifyAll() wakes all waiting threads
+   c) notifyAll() is faster
+   d) notify() is deprecated
+   Answer: b) notify() wakes one thread, notifyAll() wakes all waiting threads
+
+9. Which must be called from synchronized context?
+   a) sleep()
+   b) join()
+   c) wait() and notify()
+   d) yield()
+   Answer: c) wait() and notify()
+
+10. What is ReentrantLock?
+    a) Lock that can be acquired multiple times by same thread
+    b) Lock that cannot be reused
+    c) Read-only lock
+    d) Write-only lock
+    Answer: a) Lock that can be acquired multiple times by same thread
+
+11. What is the advantage of ReentrantLock over synchronized?
+    a) Better performance
+    b) More features like tryLock(), timeout
+    c) Automatic unlocking
+    d) Less memory usage
+    Answer: b) More features like tryLock(), timeout
+
+12. What does tryLock() return?
+    a) Lock object
+    b) boolean indicating if lock was acquired
+    c) Thread reference
+    d) Nothing (void)
+    Answer: b) boolean indicating if lock was acquired
+
+13. What is ReadWriteLock used for?
+    a) Reading and writing files
+    b) Separate locks for read and write operations
+    c) Database operations
+    d) Network operations
+    Answer: b) Separate locks for read and write operations
+
+14. How many threads can hold read lock simultaneously?
+    a) Only one
+    b) Multiple threads
+    c) Two threads
+    d) Unlimited
+    Answer: b) Multiple threads
+
+15. What is a Semaphore?
+    a) Thread signal
+    b) Controls number of threads accessing resource
+    c) Thread counter
+    d) Memory allocator
+    Answer: b) Controls number of threads accessing resource
+
+16. What does CountDownLatch do?
+    a) Counts threads
+    b) Allows one/more threads to wait for others to complete
+    c) Decrements counter
+    d) Synchronizes method calls
+    Answer: b) Allows one/more threads to wait for others to complete
+
+17. What is an atomic operation?
+    a) Nuclear operation
+    b) Indivisible operation
+    c) Fast operation
+    d) Synchronized operation
+    Answer: b) Indivisible operation
+
+18. Which class provides atomic integer operations?
+    a) AtomicInt
+    b) AtomicInteger
+    c) SyncInteger
+    d) ThreadSafeInteger
+    Answer: b) AtomicInteger
+
+19. What is compare-and-swap (CAS)?
+    a) Comparing two values
+    b) Atomic operation that updates value only if it matches expected value
+    c) Swapping variables
+    d. Lock-free operation
+    Answer: b) Atomic operation that updates value only if it matches expected value
+
+20. What is deadlock?
+    a) Thread stopping execution
+    b) Two or more threads waiting for each other indefinitely
+    c) Thread running forever
+    d) Thread synchronization
+    Answer: b) Two or more threads waiting for each other indefinitely
+
+21. How can deadlock be prevented?
+    a) Using more locks
+    b) Acquiring locks in consistent order
+    c) Using volatile variables
+    d) Avoiding synchronization
+    Answer: b) Acquiring locks in consistent order
+
+22. What is thread starvation?
+    a) Thread not getting CPU time
+    b) Thread not getting enough resources to proceed
+    c) Thread dying
+    d) Thread being interrupted
+    Answer: b) Thread not getting enough resources to proceed
+
+23. What is the benefit of lock-free programming?
+    a) No locks needed
+    b) Better performance and no deadlock risk
+    c) Easier to implement
+    d) Uses less memory
+    Answer: b) Better performance and no deadlock risk
+
+24. When should you use synchronized vs ReentrantLock?
+    a) Always use synchronized
+    b) Always use ReentrantLock
+    c) synchronized for simple cases, ReentrantLock for advanced features
+    d) Both are identical
+    Answer: c) synchronized for simple cases, ReentrantLock for advanced features
+
+25. What is volatile's relationship with synchronization?
+    a) volatile provides full synchronization
+    b. volatile provides visibility but not atomicity
+    c) volatile is better than synchronized
+    d) No relationship
+    Answer: b) volatile provides visibility but not atomicity
+
+====================================================================

@@ -1,0 +1,658 @@
+====================================================================
+                        SPRING CORE - CONFIGURATION METHODS
+====================================================================
+
+INTRODUCTION:
+Spring Core Configuration defines how beans are created, wired, and managed within the Spring IoC container. Spring offers multiple configuration approaches: XML-based, annotation-based, and Java-based configuration. Modern Spring applications primarily use annotation and Java configuration for better type safety and IDE support.
+
+KEY CONCEPTS:
+
+1. CONFIGURATION APPROACHES:
+   - XML Configuration: Traditional approach using XML files
+   - Annotation-based: Using @Component, @Service, @Repository annotations
+   - Java Configuration: Using @Configuration classes with @Bean methods
+   - Mixed Configuration: Combining multiple approaches
+
+2. @CONFIGURATION CLASSES:
+   - Replacement for XML configuration
+   - Contains @Bean methods that define beans
+   - Processed by Spring's ConfigurationClassPostProcessor
+   - Can import other configuration classes
+
+3. @BEAN ANNOTATION:
+   - Method-level annotation in @Configuration classes
+   - Defines bean creation and initialization
+   - Supports lifecycle callbacks
+   - Controls bean scope and naming
+
+4. COMPONENT SCANNING:
+   - @ComponentScan: Automatically discovers beans
+   - @Component and its specializations
+   - Custom filters for selective scanning
+   - Base package specification
+
+5. PROFILE-BASED CONFIGURATION:
+   - @Profile: Environment-specific beans
+   - Conditional bean creation
+   - Development, testing, production profiles
+   - Profile activation strategies
+
+EXAMPLE CODE:
+
+import org.springframework.context.annotation.*;
+import org.springframework.beans.factory.annotation.*;
+import org.springframework.stereotype.*;
+import org.springframework.core.env.Environment;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+
+// Java-based Configuration Example
+@Configuration
+@ComponentScan(basePackages = "com.example")
+@PropertySource("classpath:application.properties")
+public class AppConfig {
+    
+    @Autowired
+    private Environment env;
+    
+    // Simple bean definition
+    @Bean
+    public DataService dataService() {
+        return new DataServiceImpl();
+    }
+    
+    // Bean with dependencies
+    @Bean
+    public UserService userService(DataService dataService) {
+        return new UserServiceImpl(dataService);
+    }
+    
+    // Bean with custom name
+    @Bean(name = "customEmailService")
+    public EmailService emailService() {
+        EmailService service = new EmailServiceImpl();
+        service.setHost(env.getProperty("email.host", "localhost"));
+        service.setPort(env.getProperty("email.port", Integer.class, 587));
+        return service;
+    }
+    
+    // Bean with init and destroy methods
+    @Bean(initMethod = "initialize", destroyMethod = "cleanup")
+    public DatabaseConnection databaseConnection() {
+        DatabaseConnection conn = new DatabaseConnection();
+        conn.setUrl(env.getProperty("db.url"));
+        conn.setUsername(env.getProperty("db.username"));
+        conn.setPassword(env.getProperty("db.password"));
+        return conn;
+    }
+    
+    // Prototype scoped bean
+    @Bean
+    @Scope("prototype")
+    public TaskExecutor taskExecutor() {
+        return new ThreadPoolTaskExecutor();
+    }
+    
+    // Conditional bean creation
+    @Bean
+    @Profile("development")
+    public MockEmailService mockEmailService() {
+        return new MockEmailService();
+    }
+    
+    @Bean
+    @Profile("production")
+    public SmtpEmailService smtpEmailService() {
+        return new SmtpEmailService();
+    }
+}
+
+// Component Scanning Configuration
+@Configuration
+@ComponentScan(
+    basePackages = {"com.example.service", "com.example.repository"},
+    includeFilters = @ComponentScan.Filter(type = FilterType.ANNOTATION, classes = Service.class),
+    excludeFilters = @ComponentScan.Filter(type = FilterType.REGEX, pattern = ".*Test.*")
+)
+public class ComponentScanConfig {
+    
+    // Additional beans can be defined here
+    @Bean
+    public ApplicationEventPublisher eventPublisher() {
+        return new SimpleApplicationEventPublisher();
+    }
+}
+
+// Service Layer Components
+@Service
+public class UserServiceImpl implements UserService {
+    
+    private final UserRepository userRepository;
+    private final EmailService emailService;
+    
+    // Constructor injection
+    public UserServiceImpl(UserRepository userRepository, EmailService emailService) {
+        this.userRepository = userRepository;
+        this.emailService = emailService;
+    }
+    
+    @Override
+    public User createUser(String name, String email) {
+        User user = new User(name, email);
+        User savedUser = userRepository.save(user);
+        emailService.sendWelcomeEmail(savedUser);
+        return savedUser;
+    }
+    
+    @Override
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+    
+    @PostConstruct
+    public void initialize() {
+        System.out.println("UserService initialized");
+    }
+    
+    @PreDestroy
+    public void cleanup() {
+        System.out.println("UserService shutting down");
+    }
+}
+
+// Repository Layer Components
+@Repository
+public class UserRepositoryImpl implements UserRepository {
+    
+    private final List<User> users = new ArrayList<>();
+    private Long idCounter = 1L;
+    
+    @Override
+    public User save(User user) {
+        if (user.getId() == null) {
+            user.setId(idCounter++);
+        }
+        users.removeIf(u -> u.getId().equals(user.getId()));
+        users.add(user);
+        return user;
+    }
+    
+    @Override
+    public Optional<User> findById(Long id) {
+        return users.stream()
+            .filter(user -> user.getId().equals(id))
+            .findFirst();
+    }
+    
+    @Override
+    public List<User> findAll() {
+        return new ArrayList<>(users);
+    }
+    
+    @Override
+    public void deleteById(Long id) {
+        users.removeIf(user -> user.getId().equals(id));
+    }
+}
+
+// Configuration Properties Example
+@Configuration
+@ConfigurationProperties(prefix = "app")
+public class ApplicationProperties {
+    
+    private String name;
+    private String version;
+    private Database database = new Database();
+    private Email email = new Email();
+    
+    // Getters and setters
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    
+    public String getVersion() { return version; }
+    public void setVersion(String version) { this.version = version; }
+    
+    public Database getDatabase() { return database; }
+    public void setDatabase(Database database) { this.database = database; }
+    
+    public Email getEmail() { return email; }
+    public void setEmail(Email email) { this.email = email; }
+    
+    public static class Database {
+        private String url;
+        private String username;
+        private String password;
+        private int maxConnections = 10;
+        
+        // Getters and setters
+        public String getUrl() { return url; }
+        public void setUrl(String url) { this.url = url; }
+        
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
+        
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+        
+        public int getMaxConnections() { return maxConnections; }
+        public void setMaxConnections(int maxConnections) { this.maxConnections = maxConnections; }
+    }
+    
+    public static class Email {
+        private String host;
+        private int port = 587;
+        private String username;
+        private String password;
+        
+        // Getters and setters
+        public String getHost() { return host; }
+        public void setHost(String host) { this.host = host; }
+        
+        public int getPort() { return port; }
+        public void setPort(int port) { this.port = port; }
+        
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
+        
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+    }
+}
+
+// Profile-based Configuration
+@Configuration
+public class ProfileConfiguration {
+    
+    @Bean
+    @Profile("development")
+    public DataSource developmentDataSource() {
+        HikariDataSource dataSource = new HikariDataSource();
+        dataSource.setJdbcUrl("jdbc:h2:mem:devdb");
+        dataSource.setUsername("sa");
+        dataSource.setPassword("");
+        return dataSource;
+    }
+    
+    @Bean
+    @Profile("testing")
+    public DataSource testingDataSource() {
+        HikariDataSource dataSource = new HikariDataSource();
+        dataSource.setJdbcUrl("jdbc:h2:mem:testdb");
+        dataSource.setUsername("sa");
+        dataSource.setPassword("");
+        return dataSource;
+    }
+    
+    @Bean
+    @Profile("production")
+    public DataSource productionDataSource(@Value("${db.url}") String url,
+                                         @Value("${db.username}") String username,
+                                         @Value("${db.password}") String password) {
+        HikariDataSource dataSource = new HikariDataSource();
+        dataSource.setJdbcUrl(url);
+        dataSource.setUsername(username);
+        dataSource.setPassword(password);
+        dataSource.setMaximumPoolSize(20);
+        return dataSource;
+    }
+}
+
+// Conditional Configuration
+@Configuration
+public class ConditionalConfiguration {
+    
+    @Bean
+    @ConditionalOnProperty(name = "cache.enabled", havingValue = "true", matchIfMissing = false)
+    public CacheManager cacheManager() {
+        return new ConcurrentMapCacheManager("users", "products");
+    }
+    
+    @Bean
+    @ConditionalOnMissingBean(CacheManager.class)
+    public CacheManager noCacheManager() {
+        return new NoOpCacheManager();
+    }
+    
+    @Bean
+    @ConditionalOnClass(name = "redis.clients.jedis.Jedis")
+    public RedisTemplate<String, Object> redisTemplate() {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(jedisConnectionFactory());
+        return template;
+    }
+}
+
+// Import Configuration
+@Configuration
+@Import({DatabaseConfig.class, SecurityConfig.class, WebConfig.class})
+public class MainConfiguration {
+    
+    @Bean
+    public ApplicationRunner applicationRunner() {
+        return args -> {
+            System.out.println("Application started successfully!");
+        };
+    }
+}
+
+// Separate Database Configuration
+@Configuration
+@EnableTransactionManagement
+public class DatabaseConfig {
+    
+    @Bean
+    public PlatformTransactionManager transactionManager(DataSource dataSource) {
+        return new DataSourceTransactionManager(dataSource);
+    }
+    
+    @Bean
+    public JdbcTemplate jdbcTemplate(DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
+    }
+}
+
+// Configuration with Bean Post Processors
+@Configuration
+public class CustomBeanPostProcessorConfig {
+    
+    @Bean
+    public BeanPostProcessor customBeanPostProcessor() {
+        return new BeanPostProcessor() {
+            @Override
+            public Object postProcessBeforeInitialization(Object bean, String beanName) {
+                if (bean instanceof UserService) {
+                    System.out.println("Processing UserService before initialization");
+                }
+                return bean;
+            }
+            
+            @Override
+            public Object postProcessAfterInitialization(Object bean, String beanName) {
+                if (bean instanceof UserService) {
+                    System.out.println("Processing UserService after initialization");
+                }
+                return bean;
+            }
+        };
+    }
+}
+
+// Environment-specific Configuration
+@Configuration
+public class EnvironmentConfiguration {
+    
+    @Autowired
+    private Environment environment;
+    
+    @Bean
+    public LoggingConfig loggingConfig() {
+        LoggingConfig config = new LoggingConfig();
+        
+        if (environment.acceptsProfiles(Profiles.of("development"))) {
+            config.setLevel("DEBUG");
+            config.setConsoleOutput(true);
+        } else if (environment.acceptsProfiles(Profiles.of("production"))) {
+            config.setLevel("WARN");
+            config.setConsoleOutput(false);
+            config.setFileOutput(true);
+        }
+        
+        return config;
+    }
+    
+    @Bean
+    @Profile("!production")
+    public MockExternalService mockExternalService() {
+        return new MockExternalService();
+    }
+    
+    @Bean
+    @Profile("production")
+    public RealExternalService realExternalService() {
+        return new RealExternalService();
+    }
+}
+
+// Configuration Testing
+public class ConfigurationTest {
+    
+    @Test
+    public void testConfigurationLoading() {
+        ApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
+        
+        // Test bean creation
+        UserService userService = context.getBean(UserService.class);
+        assertNotNull(userService);
+        
+        // Test bean with custom name
+        EmailService emailService = context.getBean("customEmailService", EmailService.class);
+        assertNotNull(emailService);
+        
+        // Test profile-specific beans
+        if (context.getEnvironment().acceptsProfiles(Profiles.of("development"))) {
+            MockEmailService mockService = context.getBean(MockEmailService.class);
+            assertNotNull(mockService);
+        }
+        
+        context.close();
+    }
+    
+    @Test
+    public void testComponentScanning() {
+        ApplicationContext context = new AnnotationConfigApplicationContext(ComponentScanConfig.class);
+        
+        // Test scanned components
+        UserRepository repository = context.getBean(UserRepository.class);
+        assertNotNull(repository);
+        
+        UserService service = context.getBean(UserService.class);
+        assertNotNull(service);
+        
+        context.close();
+    }
+}
+
+// Application Startup Example
+public class SpringApplication {
+    
+    public static void main(String[] args) {
+        // Set active profiles
+        System.setProperty("spring.profiles.active", "development");
+        
+        // Create application context
+        ApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
+        
+        // Use the application
+        UserService userService = context.getBean(UserService.class);
+        
+        User user1 = userService.createUser("John Doe", "john@example.com");
+        User user2 = userService.createUser("Jane Smith", "jane@example.com");
+        
+        List<User> allUsers = userService.getAllUsers();
+        System.out.println("Total users: " + allUsers.size());
+        
+        // Close context to trigger cleanup
+        ((ConfigurableApplicationContext) context).close();
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What annotation marks a class as a configuration class?
+   a) @Config
+   b) @Configuration
+   c) @ConfigClass
+   d) @SpringConfig
+   Answer: b) @Configuration
+
+2. Which annotation is used to define beans in configuration classes?
+   a) @CreateBean
+   b) @DefineBean
+   c) @Bean
+   d) @MakeBean
+   Answer: c) @Bean
+
+3. What does @ComponentScan do?
+   a) Scans for configuration files
+   b) Automatically discovers and registers beans
+   c) Scans for XML files
+   d) Searches for properties files
+   Answer: b) Automatically discovers and registers beans
+
+4. Which annotation enables automatic property binding?
+   a) @PropertySource
+   b) @ConfigurationProperties
+   c) @Value
+   d) @Properties
+   Answer: b) @ConfigurationProperties
+
+5. How do you specify bean initialization method?
+   a) @Bean(init = "methodName")
+   b) @Bean(initMethod = "methodName")
+   c) @Bean(initialize = "methodName")
+   d) @Bean(startup = "methodName")
+   Answer: b) @Bean(initMethod = "methodName")
+
+6. What does @Profile annotation do?
+   a) Creates user profiles
+   b) Enables conditional bean creation based on environment
+   c) Profiles application performance
+   d) Creates security profiles
+   Answer: b) Enables conditional bean creation based on environment
+
+7. Which scope creates a new bean instance for each request?
+   a) singleton
+   b) prototype
+   c) request
+   d) session
+   Answer: b) prototype
+
+8. How do you import other configuration classes?
+   a) @Include
+   b) @Import
+   c) @Load
+   d) @Use
+   Answer: b) @Import
+
+9. What is the default scope for Spring beans?
+   a) prototype
+   b) singleton
+   c) request
+   d) session
+   Answer: b) singleton
+
+10. Which annotation injects property values?
+    a) @Property
+    b) @Value
+    c) @Inject
+    d) @Config
+    Answer: b) @Value
+
+11. What does @PostConstruct do?
+    a) Constructs new objects
+    b) Runs after bean construction and dependency injection
+    c) Posts construction events
+    d) Creates post-construction hooks
+    Answer: b) Runs after bean construction and dependency injection
+
+12. How do you enable component scanning for specific packages?
+    a) @ComponentScan(packages = "com.example")
+    b) @ComponentScan(basePackages = "com.example")
+    c) @ComponentScan(scanPackages = "com.example")
+    d) @ComponentScan(include = "com.example")
+    Answer: b) @ComponentScan(basePackages = "com.example")
+
+13. What does @ConditionalOnProperty do?
+    a) Sets property values
+    b) Creates beans only if property exists with specific value
+    c) Validates properties
+    d) Loads property files
+    Answer: b) Creates beans only if property exists with specific value
+
+14. Which method specifies bean destruction callback?
+    a) @Bean(destroy = "methodName")
+    b) @Bean(destroyMethod = "methodName")
+    c) @Bean(cleanup = "methodName")
+    d) @Bean(shutdown = "methodName")
+    Answer: b) @Bean(destroyMethod = "methodName")
+
+15. How do you load external property files?
+    a) @PropertySource("classpath:file.properties")
+    b) @LoadProperties("classpath:file.properties")
+    c) @Properties("classpath:file.properties")
+    d) @ConfigFile("classpath:file.properties")
+    Answer: a) @PropertySource("classpath:file.properties")
+
+16. What does @ConditionalOnMissingBean do?
+    a) Creates bean if missing
+    b) Creates bean only if no other bean of same type exists
+    c) Validates bean existence
+    d) Reports missing beans
+    Answer: b) Creates bean only if no other bean of same type exists
+
+17. How do you give a custom name to a bean?
+    a) @Bean(id = "customName")
+    b) @Bean(name = "customName")
+    c) @Bean("customName")
+    d) Both b and c
+    Answer: d) Both b and c
+
+18. What is BeanPostProcessor used for?
+    a) Processing bean definitions
+    b) Customizing bean initialization and destruction
+    c) Post-processing bean creation
+    d) All of the above
+    Answer: d) All of the above
+
+19. Which annotation excludes certain classes from component scanning?
+    a) @ComponentScan.Exclude
+    b) @ComponentScan(excludeFilters = ...)
+    c) @Exclude
+    d) @ComponentScan.Filter
+    Answer: b) @ComponentScan(excludeFilters = ...)
+
+20. How do you activate profiles programmatically?
+    a) System.setProperty("spring.profiles.active", "dev")
+    b) Environment.setActiveProfiles("dev")
+    c) SpringApplication.setProfiles("dev")
+    d) All of the above
+    Answer: a) System.setProperty("spring.profiles.active", "dev")
+
+21. What does @Lazy annotation do?
+    a) Makes bean creation slow
+    b) Delays bean initialization until first access
+    c) Lazy loads properties
+    d) Creates lazy proxies
+    Answer: b) Delays bean initialization until first access
+
+22. How do you specify constructor arguments in @Bean methods?
+    a) Method parameters automatically injected
+    b) @Autowired on parameters
+    c) @Inject on parameters
+    d) Manual specification required
+    Answer: a) Method parameters automatically injected
+
+23. What is the purpose of @Primary annotation?
+    a) Marks primary configuration
+    b) Indicates preferred bean when multiple candidates exist
+    c) Sets bean priority
+    d) Makes bean primary key
+    Answer: b) Indicates preferred bean when multiple candidates exist
+
+24. How do you conditionally create beans based on class presence?
+    a) @ConditionalOnClass
+    b) @ConditionalOnBean
+    c) @ConditionalOnMissingClass
+    d) Both a and c
+    Answer: d) Both a and c
+
+25. What happens when you close ConfigurableApplicationContext?
+    a) Nothing
+    b) Beans are destroyed and cleanup methods called
+    c) Application terminates
+    d) Context becomes read-only
+    Answer: b) Beans are destroyed and cleanup methods called
+
+====================================================================

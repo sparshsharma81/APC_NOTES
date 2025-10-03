@@ -1,0 +1,415 @@
+====================================================================
+                        SPRING CORE: INTRODUCTION
+====================================================================
+
+INTRODUCTION:
+Spring Framework is a comprehensive programming and configuration model for enterprise Java applications. It provides infrastructure support for developing Java applications, focusing on dependency injection, aspect-oriented programming, and declarative programming.
+
+KEY CONCEPTS:
+
+1. SPRING FRAMEWORK OVERVIEW:
+   - Created by Rod Johnson in 2003
+   - Open-source framework for Java enterprise applications
+   - Lightweight, non-invasive framework
+   - Promotes good programming practices
+   - Modular architecture with various modules
+
+2. CORE PRINCIPLES:
+   - Inversion of Control (IoC)
+   - Dependency Injection (DI)
+   - Aspect-Oriented Programming (AOP)
+   - Plain Old Java Objects (POJOs)
+   - Testability
+
+3. SPRING MODULES:
+   - Core Container: Core, Beans, Context, SpEL
+   - Data Access: JDBC, ORM, OXM, JMS, Transactions
+   - Web: Web, Web-MVC, Web-Socket, Web-Portlet
+   - AOP: Aspects, Instrumentation
+   - Test: Testing support
+
+4. SPRING TERMINOLOGY:
+   - Bean: Object managed by Spring container
+   - Container: Manages object lifecycle and dependencies
+   - Configuration: Metadata defining beans and dependencies
+   - ApplicationContext: Advanced container interface
+   - BeanFactory: Basic container interface
+
+5. BENEFITS OF SPRING:
+   - Loose coupling through DI
+   - Easy testing with POJOs
+   - Consistent programming model
+   - Integration with other frameworks
+   - Comprehensive documentation
+
+EXAMPLE CODE:
+
+// Simple POJO - No Spring dependencies
+public class MessageService {
+    public String getMessage() {
+        return "Hello from Spring!";
+    }
+}
+
+public class NotificationService {
+    private MessageService messageService;
+    
+    // Constructor injection
+    public NotificationService(MessageService messageService) {
+        this.messageService = messageService;
+    }
+    
+    public void sendNotification() {
+        String message = messageService.getMessage();
+        System.out.println("Sending: " + message);
+    }
+}
+
+// XML Configuration (applicationContext.xml)
+/*
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="messageService" class="com.example.MessageService"/>
+    
+    <bean id="notificationService" class="com.example.NotificationService">
+        <constructor-arg ref="messageService"/>
+    </bean>
+</beans>
+*/
+
+// Java Configuration
+@Configuration
+public class AppConfig {
+    
+    @Bean
+    public MessageService messageService() {
+        return new MessageService();
+    }
+    
+    @Bean
+    public NotificationService notificationService() {
+        return new NotificationService(messageService());
+    }
+}
+
+// Annotation-based Configuration
+@Service
+public class MessageService {
+    public String getMessage() {
+        return "Hello from Spring!";
+    }
+}
+
+@Service
+public class NotificationService {
+    
+    @Autowired
+    private MessageService messageService;
+    
+    public void sendNotification() {
+        String message = messageService.getMessage();
+        System.out.println("Sending: " + message);
+    }
+}
+
+// Main Application
+public class SpringApplication {
+    public static void main(String[] args) {
+        // Using XML configuration
+        ApplicationContext context = 
+            new ClassPathXmlApplicationContext("applicationContext.xml");
+        
+        NotificationService service = 
+            context.getBean("notificationService", NotificationService.class);
+        service.sendNotification();
+        
+        // Using Java configuration
+        ApplicationContext javaContext = 
+            new AnnotationConfigApplicationContext(AppConfig.class);
+        
+        NotificationService javaService = 
+            javaContext.getBean(NotificationService.class);
+        javaService.sendNotification();
+        
+        // Using component scanning
+        ApplicationContext scanContext = 
+            new AnnotationConfigApplicationContext("com.example");
+        
+        NotificationService scanService = 
+            scanContext.getBean(NotificationService.class);
+        scanService.sendNotification();
+    }
+}
+
+// Component Scanning Configuration
+@Configuration
+@ComponentScan(basePackages = "com.example")
+public class ComponentScanConfig {
+    // No need to define beans manually
+    // Spring will discover @Component, @Service, @Repository classes
+}
+
+// Profile-based Configuration
+@Configuration
+@Profile("development")
+public class DevConfig {
+    
+    @Bean
+    public MessageService messageService() {
+        return new MessageService() {
+            @Override
+            public String getMessage() {
+                return "Development Message";
+            }
+        };
+    }
+}
+
+@Configuration
+@Profile("production")
+public class ProdConfig {
+    
+    @Bean
+    public MessageService messageService() {
+        return new MessageService() {
+            @Override
+            public String getMessage() {
+                return "Production Message";
+            }
+        };
+    }
+}
+
+// Property-based Configuration
+@Configuration
+@PropertySource("classpath:application.properties")
+public class PropertyConfig {
+    
+    @Value("${app.message:Default Message}")
+    private String message;
+    
+    @Bean
+    public MessageService messageService() {
+        return new MessageService() {
+            @Override
+            public String getMessage() {
+                return message;
+            }
+        };
+    }
+}
+
+// Lifecycle Callbacks
+@Component
+public class LifecycleBean {
+    
+    @PostConstruct
+    public void init() {
+        System.out.println("Bean initialized");
+    }
+    
+    @PreDestroy
+    public void cleanup() {
+        System.out.println("Bean destroyed");
+    }
+}
+
+// Implementing lifecycle interfaces
+@Component
+public class InitializingBean implements InitializingBean, DisposableBean {
+    
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        System.out.println("Properties set, bean initialized");
+    }
+    
+    @Override
+    public void destroy() throws Exception {
+        System.out.println("Bean being destroyed");
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. Who created the Spring Framework?
+   a) James Gosling
+   b) Rod Johnson
+   c) Gavin King
+   d) Martin Fowler
+   Answer: b) Rod Johnson
+
+2. What is the core principle of Spring Framework?
+   a) Inheritance
+   b) Inversion of Control
+   c) Polymorphism
+   d) Encapsulation
+   Answer: b) Inversion of Control
+
+3. What is a Spring Bean?
+   a) A Java class
+   b) An interface
+   c) An object managed by Spring container
+   d) A configuration file
+   Answer: c) An object managed by Spring container
+
+4. Which interface provides basic container functionality?
+   a) ApplicationContext
+   b) BeanFactory
+   c) WebApplicationContext
+   d) ConfigurableApplicationContext
+   Answer: b) BeanFactory
+
+5. Which is more advanced: BeanFactory or ApplicationContext?
+   a) BeanFactory
+   b) ApplicationContext
+   c) Both are same
+   d) Neither
+   Answer: b) ApplicationContext
+
+6. What does POJO stand for?
+   a) Plain Old Java Object
+   b) Portable Object Java Object
+   c) Primary Object Java Object
+   d) Public Object Java Object
+   Answer: a) Plain Old Java Object
+
+7. Which annotation marks a class as Spring configuration?
+   a) @Config
+   b) @Configuration
+   c) @SpringConfig
+   d) @Settings
+   Answer: b) @Configuration
+
+8. Which annotation is used to define a bean in Java configuration?
+   a) @Component
+   b) @Bean
+   c) @Service
+   d) @Repository
+   Answer: b) @Bean
+
+9. What does @ComponentScan do?
+   a) Scans for components
+   b) Automatically discovers and registers beans
+   c) Scans configuration files
+   d) Scans for errors
+   Answer: b) Automatically discovers and registers beans
+
+10. Which annotation injects dependencies automatically?
+    a) @Inject
+    b) @Autowired
+    c) @Resource
+    d) All of the above
+    Answer: d) All of the above
+
+11. What is the default scope of Spring beans?
+    a) prototype
+    b) singleton
+    c) session
+    d) request
+    Answer: b) singleton
+
+12. Which annotation specifies active profiles?
+    a) @Profile
+    b) @ActiveProfiles
+    c) @Environment
+    d) Both a and b
+    Answer: d) Both a and b
+
+13. What does @Value annotation do?
+    a) Sets bean value
+    b) Injects property values
+    c) Validates values
+    d) Returns values
+    Answer: b) Injects property values
+
+14. Which annotation loads property files?
+    a) @Properties
+    b) @PropertySource
+    c) @LoadProperties
+    d) @ConfigProperties
+    Answer: b) @PropertySource
+
+15. What happens after bean properties are set?
+    a) @PostConstruct method is called
+    b) Bean is destroyed
+    c. Constructor is called
+    d) Nothing happens
+    Answer: a) @PostConstruct method is called
+
+16. Which method is called before bean destruction?
+    a) @PreDestroy
+    b) @PostConstruct
+    c) finalize()
+    d) destroy()
+    Answer: a) @PreDestroy
+
+17. What is dependency injection?
+    a) Injecting bugs
+    b) Providing dependencies to objects externally
+    c) Creating dependencies
+    d) Removing dependencies
+    Answer: b) Providing dependencies to objects externally
+
+18. Which Spring module contains core functionality?
+    a) spring-web
+    b) spring-core
+    c) spring-data
+    d) spring-security
+    Answer: b) spring-core
+
+19. What is ApplicationContext?
+    a) Web context
+    b) Advanced IoC container
+    c) Database context
+    d) Security context
+    Answer: b) Advanced IoC container
+
+20. Which is NOT a Spring stereotype annotation?
+    a) @Component
+    b) @Service
+    c) @Repository
+    d) @Entity
+    Answer: d) @Entity
+
+21. What does loose coupling mean?
+    a) Objects are tightly connected
+    b) Objects have minimal dependencies
+    c) Objects are disconnected
+    d) Objects share same code
+    Answer: b) Objects have minimal dependencies
+
+22. Which configuration type is recommended for new projects?
+    a) XML configuration
+    b) Java configuration
+    c) Annotation configuration
+    d) Mixed configuration
+    Answer: b) Java configuration
+
+23. What is Spring's approach to object creation?
+    a) Manual instantiation
+    b) Factory pattern
+    c) Container manages lifecycle
+    d) Static initialization
+    Answer: c) Container manages lifecycle
+
+24. Which annotation makes a class eligible for dependency injection?
+    a) @Component
+    b) @Bean
+    c) @Autowired
+    d) @Inject
+    Answer: a) @Component
+
+25. What is the main advantage of Spring Framework?
+    a) Performance
+    b) Simplicity and testability
+    c) Memory efficiency
+    d) Speed
+    Answer: b) Simplicity and testability
+
+====================================================================

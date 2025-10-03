@@ -1,0 +1,252 @@
+====================================================================
+                        DEPENDENCY INJECTION IN JAVA
+====================================================================
+
+INTRODUCTION:
+Dependency Injection (DI) is a design pattern that implements Inversion of Control (IoC) for resolving dependencies. Instead of creating dependencies directly, objects receive their dependencies from external sources, leading to loose coupling and better testability.
+
+KEY CONCEPTS:
+
+1. TYPES OF DEPENDENCY INJECTION:
+   a) Constructor Injection: Dependencies provided through constructor
+   b) Setter Injection: Dependencies provided through setter methods
+   c) Field Injection: Dependencies injected directly into fields
+
+2. INVERSION OF CONTROL (IoC):
+   - Control of object creation is inverted
+   - Framework/container manages dependencies
+   - Objects don't create their dependencies
+
+3. BENEFITS:
+   - Loose coupling between classes
+   - Easy unit testing with mock objects
+   - Better separation of concerns
+   - Improved maintainability
+
+4. DI FRAMEWORKS:
+   - Spring Framework (most popular)
+   - Google Guice
+   - CDI (Contexts and Dependency Injection)
+   - Dagger (for Android)
+
+5. DI ANNOTATIONS (Spring):
+   - @Autowired: Automatic dependency injection
+   - @Component: Marks class as Spring component
+   - @Service: Specialization of @Component
+   - @Repository: Data access component
+   - @Controller: Web controller component
+   - @Configuration: Configuration class
+   - @Bean: Factory method for beans
+
+EXAMPLE CODE:
+
+// Without Dependency Injection
+class OrderService {
+    private EmailService emailService = new EmailService(); // Tight coupling
+    
+    public void processOrder() {
+        // Process order
+        emailService.sendConfirmation();
+    }
+}
+
+// With Constructor Injection
+class OrderService {
+    private final EmailService emailService;
+    
+    public OrderService(EmailService emailService) {
+        this.emailService = emailService;
+    }
+    
+    public void processOrder() {
+        // Process order
+        emailService.sendConfirmation();
+    }
+}
+
+// Spring DI Example
+@Service
+public class OrderService {
+    private final EmailService emailService;
+    private final PaymentService paymentService;
+    
+    @Autowired
+    public OrderService(EmailService emailService, PaymentService paymentService) {
+        this.emailService = emailService;
+        this.paymentService = paymentService;
+    }
+}
+
+@Component
+public class EmailService {
+    public void sendConfirmation() {
+        // Send email
+    }
+}
+
+// Configuration
+@Configuration
+public class AppConfig {
+    @Bean
+    public EmailService emailService() {
+        return new EmailService();
+    }
+}
+
+TESTING WITH DI:
+// Easy mocking for unit tests
+@Test
+public void testOrderService() {
+    EmailService mockEmailService = Mockito.mock(EmailService.class);
+    OrderService orderService = new OrderService(mockEmailService);
+    
+    orderService.processOrder();
+    
+    verify(mockEmailService).sendConfirmation();
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What does Dependency Injection implement?
+   a) Factory pattern
+   b) Singleton pattern
+   c) Inversion of Control
+   d) Observer pattern
+   Answer: c) Inversion of Control
+
+2. Which type of injection provides dependencies through constructor?
+   a) Setter injection
+   b) Constructor injection
+   c) Field injection
+   d) Method injection
+   Answer: b) Constructor injection
+
+3. What is the main benefit of Dependency Injection?
+   a) Better performance
+   b) Loose coupling
+   c) Memory efficiency
+   d) Faster execution
+   Answer: b) Loose coupling
+
+4. Which Spring annotation is used for automatic dependency injection?
+   a) @Inject
+   b) @Autowired
+   c) @Dependency
+   d) @Wire
+   Answer: b) @Autowired
+
+5. What does @Component annotation do in Spring?
+   a) Creates component diagram
+   b) Marks class as Spring-managed component
+   c) Defines component interface
+   d) Configures components
+   Answer: b) Marks class as Spring-managed component
+
+6. Which is the most recommended type of dependency injection?
+   a) Field injection
+   b) Setter injection
+   c) Constructor injection
+   d) Method injection
+   Answer: c) Constructor injection
+
+7. What does IoC stand for?
+   a) Internet of Code
+   b) Inversion of Control
+   c) Interface of Components
+   d) Integration of Classes
+   Answer: b) Inversion of Control
+
+8. Which annotation is a specialization of @Component for service layer?
+   a) @Service
+   b) @Repository
+   c) @Controller
+   d) @Bean
+   Answer: a) @Service
+
+9. What is the purpose of @Configuration annotation?
+   a) Configures application
+   b) Marks configuration class
+   c) Sets configuration values
+   d) Creates configuration files
+   Answer: b) Marks configuration class
+
+10. Which annotation is used to define factory methods in Spring?
+    a) @Factory
+    b) @Bean
+    c) @Method
+    d) @Create
+    Answer: b) @Bean
+
+11. What makes unit testing easier with DI?
+    a) Automatic test generation
+    b) Mock object injection
+    c) Test data injection
+    d) Test case injection
+    Answer: b) Mock object injection
+
+12. Which DI framework is most popular for Java?
+    a) Google Guice
+    b) Spring Framework
+    c) CDI
+    d) Dagger
+    Answer: b) Spring Framework
+
+13. What is field injection?
+    a) Injecting into constructor parameters
+    b) Injecting through setter methods
+    c) Injecting directly into fields
+    d) Injecting into method parameters
+    Answer: c) Injecting directly into fields
+
+14. Why is constructor injection preferred?
+    a) It's faster
+    b) It ensures immutability and required dependencies
+    c) It uses less memory
+    d) It's easier to write
+    Answer: b) It ensures immutability and required dependencies
+
+15. What does @Repository annotation indicate?
+    a) File repository
+    b) Data access component
+    c) Code repository
+    d) Configuration repository
+    Answer: b) Data access component
+
+16. What is tight coupling?
+    a) Classes are loosely connected
+    b) Classes are highly dependent on each other
+    c) Classes are not connected
+    d) Classes are moderately connected
+    Answer: b) Classes are highly dependent on each other
+
+17. Which pattern does DI help to avoid?
+    a) Factory pattern
+    b) Singleton pattern
+    c) Hard-coded dependencies
+    d) Observer pattern
+    Answer: c) Hard-coded dependencies
+
+18. What is the role of DI container?
+    a) Store dependencies
+    b) Manage object lifecycle and dependencies
+    c) Compress dependencies
+    d) Encrypt dependencies
+    Answer: b) Manage object lifecycle and dependencies
+
+19. Can you have multiple constructors with @Autowired?
+    a) Yes, unlimited
+    b) No, only one
+    c) Yes, but only one can be @Autowired
+    d) Yes, all must be @Autowired
+    Answer: c) Yes, but only one can be @Autowired
+
+20. What happens if required dependency is not found in Spring?
+    a) Default implementation is used
+    b) Null is injected
+    c) NoSuchBeanDefinitionException is thrown
+    d) Application continues without dependency
+    Answer: c) NoSuchBeanDefinitionException is thrown
+
+====================================================================

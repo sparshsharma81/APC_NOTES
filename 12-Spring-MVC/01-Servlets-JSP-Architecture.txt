@@ -1,0 +1,1238 @@
+====================================================================
+                    SPRING MVC - SERVLETS AND JSP
+====================================================================
+
+INTRODUCTION:
+Spring MVC (Model-View-Controller) is a web framework built on the Servlet API. It provides a comprehensive programming model for web applications with features like flexible controller mapping, view resolution, form handling, validation, and integration with various view technologies including JSP, Thymeleaf, and others.
+
+KEY CONCEPTS:
+
+1. MVC ARCHITECTURE:
+   - Model: Data and business logic
+   - View: Presentation layer (JSP, Thymeleaf, etc.)
+   - Controller: Request handling and coordination
+   - DispatcherServlet: Front controller pattern
+   - ViewResolver: Maps logical view names to actual views
+
+2. SERVLET FUNDAMENTALS:
+   - HttpServlet lifecycle
+   - Request and Response objects
+   - Session management
+   - Context and configuration
+   - Filter and Listener patterns
+
+3. JSP FEATURES:
+   - JSP lifecycle and compilation
+   - Scriptlets, expressions, and declarations
+   - JSP directives (page, include, taglib)
+   - JSTL (JSP Standard Tag Library)
+   - Custom tags and tag files
+   - EL (Expression Language)
+
+4. SPRING MVC COMPONENTS:
+   - @Controller and @RestController
+   - @RequestMapping and variants
+   - Model and ModelAndView
+   - @ModelAttribute and form binding
+   - Validation and error handling
+   - Interceptors and filters
+
+5. VIEW TECHNOLOGIES:
+   - JSP integration
+   - Thymeleaf templates
+   - JSON and XML responses
+   - Content negotiation
+   - Static resource handling
+
+EXAMPLE CODE:
+
+// Basic Servlet Implementation
+@WebServlet(name = "UserServlet", urlPatterns = {"/users/*"})
+public class UserServlet extends HttpServlet {
+    
+    @Autowired
+    private UserService userService;
+    
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        // Servlet initialization
+        log.info("UserServlet initialized");
+    }
+    
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        String pathInfo = request.getPathInfo();
+        String method = request.getMethod();
+        
+        log.info("Processing GET request: {}", pathInfo);
+        
+        try {
+            if (pathInfo == null || pathInfo.equals("/")) {
+                // List all users
+                listUsers(request, response);
+            } else if (pathInfo.matches("/\\d+")) {
+                // Get specific user
+                Long userId = Long.parseLong(pathInfo.substring(1));
+                getUser(request, response, userId);
+            } else {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            }
+        } catch (Exception e) {
+            log.error("Error processing request", e);
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        try {
+            // Create new user
+            String username = request.getParameter("username");
+            String email = request.getParameter("email");
+            String firstName = request.getParameter("firstName");
+            String lastName = request.getParameter("lastName");
+            
+            User user = new User();
+            user.setUsername(username);
+            user.setEmail(email);
+            user.setFirstName(firstName);
+            user.setLastName(lastName);
+            
+            User savedUser = userService.save(user);
+            
+            // Redirect to user detail page
+            response.sendRedirect(request.getContextPath() + "/users/" + savedUser.getId());
+            
+        } catch (Exception e) {
+            log.error("Error creating user", e);
+            request.setAttribute("error", "Failed to create user: " + e.getMessage());
+            request.getRequestDispatcher("/WEB-INF/jsp/user-form.jsp").forward(request, response);
+        }
+    }
+    
+    @Override
+    protected void doPut(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        String pathInfo = request.getPathInfo();
+        if (pathInfo != null && pathInfo.matches("/\\d+")) {
+            Long userId = Long.parseLong(pathInfo.substring(1));
+            
+            try {
+                // Read JSON from request body
+                StringBuilder jsonBuffer = new StringBuilder();
+                String line;
+                BufferedReader reader = request.getReader();
+                while ((line = reader.readLine()) != null) {
+                    jsonBuffer.append(line);
+                }
+                
+                // Parse JSON and update user
+                ObjectMapper mapper = new ObjectMapper();
+                User userUpdate = mapper.readValue(jsonBuffer.toString(), User.class);
+                userUpdate.setId(userId);
+                
+                User updatedUser = userService.update(userUpdate);
+                
+                // Return JSON response
+                response.setContentType("application/json");
+                response.getWriter().write(mapper.writeValueAsString(updatedUser));
+                
+            } catch (Exception e) {
+                log.error("Error updating user", e);
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+            }
+        } else {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+        }
+    }
+    
+    @Override
+    protected void doDelete(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        String pathInfo = request.getPathInfo();
+        if (pathInfo != null && pathInfo.matches("/\\d+")) {
+            Long userId = Long.parseLong(pathInfo.substring(1));
+            
+            try {
+                userService.deleteById(userId);
+                response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+            } catch (Exception e) {
+                log.error("Error deleting user", e);
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
+        } else {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+        }
+    }
+    
+    private void listUsers(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        int page = parseInt(request.getParameter("page"), 0);
+        int size = parseInt(request.getParameter("size"), 10);
+        String sort = request.getParameter("sort");
+        
+        Page<User> users = userService.findAll(PageRequest.of(page, size, 
+            sort != null ? Sort.by(sort) : Sort.by("username")));
+        
+        request.setAttribute("users", users);
+        request.setAttribute("currentPage", page);
+        request.setAttribute("totalPages", users.getTotalPages());
+        
+        request.getRequestDispatcher("/WEB-INF/jsp/user-list.jsp").forward(request, response);
+    }
+    
+    private void getUser(HttpServletRequest request, HttpServletResponse response, Long userId) 
+            throws ServletException, IOException {
+        
+        try {
+            User user = userService.findById(userId);
+            request.setAttribute("user", user);
+            request.getRequestDispatcher("/WEB-INF/jsp/user-detail.jsp").forward(request, response);
+        } catch (UserNotFoundException e) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+        }
+    }
+    
+    private int parseInt(String value, int defaultValue) {
+        try {
+            return value != null ? Integer.parseInt(value) : defaultValue;
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+    
+    @Override
+    public void destroy() {
+        super.destroy();
+        log.info("UserServlet destroyed");
+    }
+}
+
+// Spring MVC Controller
+@Controller
+@RequestMapping("/mvc/users")
+@Slf4j
+public class UserController {
+    
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private UserValidator userValidator;
+    
+    // Display user list
+    @GetMapping
+    public String listUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "username") String sort,
+            @RequestParam(defaultValue = "asc") String direction,
+            Model model) {
+        
+        Sort.Direction dir = direction.equalsIgnoreCase("desc") ? 
+            Sort.Direction.DESC : Sort.Direction.ASC;
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by(dir, sort));
+        Page<User> users = userService.findAll(pageable);
+        
+        model.addAttribute("users", users);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", users.getTotalPages());
+        model.addAttribute("sortField", sort);
+        model.addAttribute("sortDirection", direction);
+        
+        return "user/list";
+    }
+    
+    // Display user details
+    @GetMapping("/{id}")
+    public String showUser(@PathVariable Long id, Model model) {
+        try {
+            User user = userService.findById(id);
+            model.addAttribute("user", user);
+            return "user/detail";
+        } catch (UserNotFoundException e) {
+            model.addAttribute("error", "User not found");
+            return "error/404";
+        }
+    }
+    
+    // Show create user form
+    @GetMapping("/new")
+    public String showCreateForm(Model model) {
+        model.addAttribute("user", new User());
+        model.addAttribute("action", "create");
+        return "user/form";
+    }
+    
+    // Handle create user form submission
+    @PostMapping
+    public String createUser(@Valid @ModelAttribute User user, 
+                           BindingResult bindingResult, 
+                           Model model,
+                           RedirectAttributes redirectAttributes) {
+        
+        // Additional validation
+        userValidator.validate(user, bindingResult);
+        
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("action", "create");
+            return "user/form";
+        }
+        
+        try {
+            User savedUser = userService.save(user);
+            redirectAttributes.addFlashAttribute("success", 
+                "User created successfully: " + savedUser.getUsername());
+            return "redirect:/mvc/users/" + savedUser.getId();
+        } catch (Exception e) {
+            log.error("Error creating user", e);
+            model.addAttribute("error", "Failed to create user: " + e.getMessage());
+            model.addAttribute("action", "create");
+            return "user/form";
+        }
+    }
+    
+    // Show edit user form
+    @GetMapping("/{id}/edit")
+    public String showEditForm(@PathVariable Long id, Model model) {
+        try {
+            User user = userService.findById(id);
+            model.addAttribute("user", user);
+            model.addAttribute("action", "edit");
+            return "user/form";
+        } catch (UserNotFoundException e) {
+            model.addAttribute("error", "User not found");
+            return "error/404";
+        }
+    }
+    
+    // Handle edit user form submission
+    @PostMapping("/{id}")
+    public String updateUser(@PathVariable Long id,
+                           @Valid @ModelAttribute User user,
+                           BindingResult bindingResult,
+                           Model model,
+                           RedirectAttributes redirectAttributes) {
+        
+        user.setId(id);
+        userValidator.validate(user, bindingResult);
+        
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("action", "edit");
+            return "user/form";
+        }
+        
+        try {
+            User updatedUser = userService.update(user);
+            redirectAttributes.addFlashAttribute("success", 
+                "User updated successfully: " + updatedUser.getUsername());
+            return "redirect:/mvc/users/" + updatedUser.getId();
+        } catch (Exception e) {
+            log.error("Error updating user", e);
+            model.addAttribute("error", "Failed to update user: " + e.getMessage());
+            model.addAttribute("action", "edit");
+            return "user/form";
+        }
+    }
+    
+    // Delete user
+    @PostMapping("/{id}/delete")
+    public String deleteUser(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            User user = userService.findById(id);
+            userService.deleteById(id);
+            redirectAttributes.addFlashAttribute("success", 
+                "User deleted successfully: " + user.getUsername());
+        } catch (Exception e) {
+            log.error("Error deleting user", e);
+            redirectAttributes.addFlashAttribute("error", 
+                "Failed to delete user: " + e.getMessage());
+        }
+        
+        return "redirect:/mvc/users";
+    }
+    
+    // AJAX endpoints
+    @GetMapping("/search")
+    @ResponseBody
+    public List<UserDTO> searchUsers(@RequestParam String query) {
+        return userService.searchUsers(query).stream()
+            .map(this::convertToDTO)
+            .collect(Collectors.toList());
+    }
+    
+    @PostMapping("/validate-username")
+    @ResponseBody
+    public Map<String, Boolean> validateUsername(@RequestParam String username) {
+        boolean available = !userService.existsByUsername(username);
+        return Collections.singletonMap("available", available);
+    }
+    
+    // Exception handling
+    @ExceptionHandler(UserNotFoundException.class)
+    public String handleUserNotFound(UserNotFoundException e, Model model) {
+        model.addAttribute("error", e.getMessage());
+        return "error/404";
+    }
+    
+    @ExceptionHandler(Exception.class)
+    public String handleGenericError(Exception e, Model model) {
+        log.error("Unexpected error", e);
+        model.addAttribute("error", "An unexpected error occurred");
+        return "error/500";
+    }
+    
+    // Model attributes
+    @ModelAttribute("allRoles")
+    public List<String> getAllRoles() {
+        return Arrays.asList("USER", "ADMIN", "MANAGER");
+    }
+    
+    @ModelAttribute("allStatuses")
+    public List<UserStatus> getAllStatuses() {
+        return Arrays.asList(UserStatus.values());
+    }
+    
+    private UserDTO convertToDTO(User user) {
+        return UserDTO.builder()
+            .id(user.getId())
+            .username(user.getUsername())
+            .email(user.getEmail())
+            .firstName(user.getFirstName())
+            .lastName(user.getLastName())
+            .status(user.getStatus())
+            .build();
+    }
+}
+
+// Custom Validator
+@Component
+public class UserValidator implements Validator {
+    
+    @Autowired
+    private UserService userService;
+    
+    @Override
+    public boolean supports(Class<?> clazz) {
+        return User.class.equals(clazz);
+    }
+    
+    @Override
+    public void validate(Object target, Errors errors) {
+        User user = (User) target;
+        
+        // Username validation
+        if (user.getUsername() != null && user.getUsername().length() < 3) {
+            errors.rejectValue("username", "user.username.tooShort", 
+                "Username must be at least 3 characters long");
+        }
+        
+        // Check username uniqueness (for new users or when username changed)
+        if (user.getId() == null || hasUsernameChanged(user)) {
+            if (userService.existsByUsername(user.getUsername())) {
+                errors.rejectValue("username", "user.username.exists", 
+                    "Username already exists");
+            }
+        }
+        
+        // Email validation
+        if (user.getEmail() != null && !isValidEmail(user.getEmail())) {
+            errors.rejectValue("email", "user.email.invalid", 
+                "Please enter a valid email address");
+        }
+        
+        // Check email uniqueness
+        if (user.getId() == null || hasEmailChanged(user)) {
+            if (userService.existsByEmail(user.getEmail())) {
+                errors.rejectValue("email", "user.email.exists", 
+                    "Email already exists");
+            }
+        }
+    }
+    
+    private boolean hasUsernameChanged(User user) {
+        try {
+            User existingUser = userService.findById(user.getId());
+            return !existingUser.getUsername().equals(user.getUsername());
+        } catch (UserNotFoundException e) {
+            return true;
+        }
+    }
+    
+    private boolean hasEmailChanged(User user) {
+        try {
+            User existingUser = userService.findById(user.getId());
+            return !existingUser.getEmail().equals(user.getEmail());
+        } catch (UserNotFoundException e) {
+            return true;
+        }
+    }
+    
+    private boolean isValidEmail(String email) {
+        return email.matches("^[A-Za-z0-9+_.-]+@(.+)$");
+    }
+}
+
+// Web Configuration
+@Configuration
+@EnableWebMvc
+@ComponentScan(basePackages = "com.example")
+public class WebConfig implements WebMvcConfigurer {
+    
+    @Bean
+    public ViewResolver viewResolver() {
+        InternalResourceViewResolver resolver = new InternalResourceViewResolver();
+        resolver.setPrefix("/WEB-INF/jsp/");
+        resolver.setSuffix(".jsp");
+        resolver.setExposeContextBeansAsAttributes(true);
+        return resolver;
+    }
+    
+    @Override
+    public void configureDefaultServletHandling(DefaultServletHandlerConfigurer configurer) {
+        configurer.enable();
+    }
+    
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/static/**")
+                .addResourceLocations("/static/", "classpath:/static/")
+                .setCachePeriod(3600)
+                .resourceChain(true)
+                .addResolver(new PathResourceResolver());
+        
+        registry.addResourceHandler("/webjars/**")
+                .addResourceLocations("classpath:/META-INF/resources/webjars/")
+                .setCachePeriod(3600);
+    }
+    
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(new LoggingInterceptor())
+                .addPathPatterns("/**")
+                .excludePathPatterns("/static/**", "/webjars/**");
+        
+        registry.addInterceptor(new AuthenticationInterceptor())
+                .addPathPatterns("/mvc/users/**")
+                .excludePathPatterns("/mvc/users/login", "/mvc/users/register");
+    }
+    
+    @Override
+    public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
+        converters.add(new MappingJackson2HttpMessageConverter());
+        converters.add(new StringHttpMessageConverter());
+    }
+    
+    @Override
+    public void configureContentNegotiation(ContentNegotiationConfigurer configurer) {
+        configurer
+            .favorParameter(true)
+            .parameterName("format")
+            .ignoreAcceptHeader(false)
+            .useRegisteredExtensionsOnly(false)
+            .defaultContentType(MediaType.TEXT_HTML)
+            .mediaType("html", MediaType.TEXT_HTML)
+            .mediaType("json", MediaType.APPLICATION_JSON)
+            .mediaType("xml", MediaType.APPLICATION_XML);
+    }
+    
+    @Bean
+    public MessageSource messageSource() {
+        ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("messages");
+        messageSource.setDefaultEncoding("UTF-8");
+        return messageSource;
+    }
+    
+    @Bean
+    public LocaleResolver localeResolver() {
+        SessionLocaleResolver resolver = new SessionLocaleResolver();
+        resolver.setDefaultLocale(Locale.ENGLISH);
+        return resolver;
+    }
+    
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        registry.addViewController("/").setViewName("index");
+        registry.addViewController("/login").setViewName("auth/login");
+        registry.addViewController("/register").setViewName("auth/register");
+    }
+}
+
+// Custom Interceptor
+@Component
+@Slf4j
+public class LoggingInterceptor implements HandlerInterceptor {
+    
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, 
+                           Object handler) throws Exception {
+        
+        long startTime = System.currentTimeMillis();
+        request.setAttribute("startTime", startTime);
+        
+        log.info("Request URL: {}, Method: {}, Handler: {}", 
+            request.getRequestURL(), request.getMethod(), handler);
+        
+        return true;
+    }
+    
+    @Override
+    public void postHandle(HttpServletRequest request, HttpServletResponse response, 
+                         Object handler, ModelAndView modelAndView) throws Exception {
+        
+        if (modelAndView != null) {
+            log.info("View name: {}, Model: {}", 
+                modelAndView.getViewName(), modelAndView.getModel().keySet());
+        }
+    }
+    
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, 
+                              Object handler, Exception ex) throws Exception {
+        
+        long startTime = (Long) request.getAttribute("startTime");
+        long endTime = System.currentTimeMillis();
+        long duration = endTime - startTime;
+        
+        log.info("Request completed - Status: {}, Duration: {}ms", 
+            response.getStatus(), duration);
+        
+        if (ex != null) {
+            log.error("Request failed with exception", ex);
+        }
+    }
+}
+
+// JSP Examples
+
+/* user-list.jsp */
+/*
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Management</title>
+    <link rel="stylesheet" href="<c:url value='/static/css/bootstrap.min.css'/>">
+    <link rel="stylesheet" href="<c:url value='/static/css/style.css'/>">
+</head>
+<body>
+    <div class="container">
+        <h1>User Management</h1>
+        
+        <!-- Flash Messages -->
+        <c:if test="${not empty success}">
+            <div class="alert alert-success alert-dismissible">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                ${success}
+            </div>
+        </c:if>
+        
+        <c:if test="${not empty error}">
+            <div class="alert alert-danger alert-dismissible">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                ${error}
+            </div>
+        </c:if>
+        
+        <!-- Search and Actions -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <input type="text" id="searchBox" class="form-control" placeholder="Search users...">
+            </div>
+            <div class="col-md-6 text-right">
+                <a href="<c:url value='/mvc/users/new'/>" class="btn btn-primary">
+                    <i class="fa fa-plus"></i> Add New User
+                </a>
+            </div>
+        </div>
+        
+        <!-- Users Table -->
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>
+                            <a href="?sort=id&direction=${sortField eq 'id' and sortDirection eq 'asc' ? 'desc' : 'asc'}">
+                                ID
+                                <c:if test="${sortField eq 'id'}">
+                                    <i class="fa fa-sort-${sortDirection eq 'asc' ? 'up' : 'down'}"></i>
+                                </c:if>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="?sort=username&direction=${sortField eq 'username' and sortDirection eq 'asc' ? 'desc' : 'asc'}">
+                                Username
+                                <c:if test="${sortField eq 'username'}">
+                                    <i class="fa fa-sort-${sortDirection eq 'asc' ? 'up' : 'down'}"></i>
+                                </c:if>
+                            </a>
+                        </th>
+                        <th>Email</th>
+                        <th>Full Name</th>
+                        <th>Status</th>
+                        <th>Created Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <c:forEach var="user" items="${users.content}">
+                        <tr>
+                            <td>${user.id}</td>
+                            <td>${user.username}</td>
+                            <td>${user.email}</td>
+                            <td>${user.firstName} ${user.lastName}</td>
+                            <td>
+                                <span class="badge badge-${user.status eq 'ACTIVE' ? 'success' : 'secondary'}">
+                                    ${user.status}
+                                </span>
+                            </td>
+                            <td>
+                                <fmt:formatDate value="${user.createdAt}" pattern="yyyy-MM-dd HH:mm"/>
+                            </td>
+                            <td>
+                                <a href="<c:url value='/mvc/users/${user.id}'/>" class="btn btn-sm btn-info">
+                                    <i class="fa fa-eye"></i> View
+                                </a>
+                                <a href="<c:url value='/mvc/users/${user.id}/edit'/>" class="btn btn-sm btn-warning">
+                                    <i class="fa fa-edit"></i> Edit
+                                </a>
+                                <button type="button" class="btn btn-sm btn-danger" 
+                                        onclick="confirmDelete(${user.id}, '${user.username}')">
+                                    <i class="fa fa-trash"></i> Delete
+                                </button>
+                            </td>
+                        </tr>
+                    </c:forEach>
+                    
+                    <c:if test="${empty users.content}">
+                        <tr>
+                            <td colspan="7" class="text-center">No users found</td>
+                        </tr>
+                    </c:if>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <c:if test="${users.totalPages > 1}">
+            <nav aria-label="User pagination">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item ${users.first ? 'disabled' : ''}">
+                        <a class="page-link" href="?page=${currentPage - 1}&sort=${sortField}&direction=${sortDirection}">
+                            Previous
+                        </a>
+                    </li>
+                    
+                    <c:forEach begin="0" end="${users.totalPages - 1}" var="pageNum">
+                        <li class="page-item ${pageNum eq currentPage ? 'active' : ''}">
+                            <a class="page-link" href="?page=${pageNum}&sort=${sortField}&direction=${sortDirection}">
+                                ${pageNum + 1}
+                            </a>
+                        </li>
+                    </c:forEach>
+                    
+                    <li class="page-item ${users.last ? 'disabled' : ''}">
+                        <a class="page-link" href="?page=${currentPage + 1}&sort=${sortField}&direction=${sortDirection}">
+                            Next
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </c:if>
+    </div>
+    
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete user <strong id="deleteUsername"></strong>?</p>
+                    <p class="text-danger">This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <form id="deleteForm" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="<c:url value='/static/js/jquery.min.js'/>"></script>
+    <script src="<c:url value='/static/js/bootstrap.min.js'/>"></script>
+    <script>
+        function confirmDelete(userId, username) {
+            $('#deleteUsername').text(username);
+            $('#deleteForm').attr('action', '<c:url value="/mvc/users/"/>' + userId + '/delete');
+            $('#deleteModal').modal('show');
+        }
+        
+        // Search functionality
+        $('#searchBox').on('input', function() {
+            var query = $(this).val();
+            if (query.length >= 2) {
+                $.get('<c:url value="/mvc/users/search"/>', {query: query}, function(users) {
+                    // Update table with search results
+                    updateUserTable(users);
+                });
+            }
+        });
+        
+        function updateUserTable(users) {
+            var tbody = $('tbody');
+            tbody.empty();
+            
+            if (users.length === 0) {
+                tbody.append('<tr><td colspan="7" class="text-center">No users found</td></tr>');
+                return;
+            }
+            
+            users.forEach(function(user) {
+                var row = '<tr>' +
+                    '<td>' + user.id + '</td>' +
+                    '<td>' + user.username + '</td>' +
+                    '<td>' + user.email + '</td>' +
+                    '<td>' + user.firstName + ' ' + user.lastName + '</td>' +
+                    '<td><span class="badge badge-' + (user.status === 'ACTIVE' ? 'success' : 'secondary') + '">' + user.status + '</span></td>' +
+                    '<td>-</td>' +
+                    '<td>' +
+                        '<a href="<c:url value="/mvc/users/"/>' + user.id + '" class="btn btn-sm btn-info">View</a> ' +
+                        '<a href="<c:url value="/mvc/users/"/>' + user.id + '/edit" class="btn btn-sm btn-warning">Edit</a> ' +
+                        '<button class="btn btn-sm btn-danger" onclick="confirmDelete(' + user.id + ', \'' + user.username + '\')">Delete</button>' +
+                    '</td>' +
+                '</tr>';
+                tbody.append(row);
+            });
+        }
+    </script>
+</body>
+</html>
+*/
+
+/* user-form.jsp */
+/*
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
+<%@ taglib prefix="spring" uri="http://www.springframework.org/tags" %>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>${action eq 'create' ? 'Create' : 'Edit'} User</title>
+    <link rel="stylesheet" href="<c:url value='/static/css/bootstrap.min.css'/>">
+    <link rel="stylesheet" href="<c:url value='/static/css/style.css'/>">
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>${action eq 'create' ? 'Create New User' : 'Edit User'}</h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Error Messages -->
+                        <c:if test="${not empty error}">
+                            <div class="alert alert-danger">
+                                ${error}
+                            </div>
+                        </c:if>
+                        
+                        <form:form modelAttribute="user" method="post" class="needs-validation" novalidate="true">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="username">Username <span class="text-danger">*</span></label>
+                                        <form:input path="username" class="form-control" id="username" required="true"/>
+                                        <form:errors path="username" class="invalid-feedback d-block"/>
+                                        <div id="usernameAvailability" class="form-text"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="email">Email <span class="text-danger">*</span></label>
+                                        <form:input path="email" type="email" class="form-control" id="email" required="true"/>
+                                        <form:errors path="email" class="invalid-feedback d-block"/>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="firstName">First Name <span class="text-danger">*</span></label>
+                                        <form:input path="firstName" class="form-control" id="firstName" required="true"/>
+                                        <form:errors path="firstName" class="invalid-feedback d-block"/>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="lastName">Last Name <span class="text-danger">*</span></label>
+                                        <form:input path="lastName" class="form-control" id="lastName" required="true"/>
+                                        <form:errors path="lastName" class="invalid-feedback d-block"/>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="status">Status</label>
+                                        <form:select path="status" class="form-control" id="status">
+                                            <form:option value="">Select Status</form:option>
+                                            <form:options items="${allStatuses}"/>
+                                        </form:select>
+                                        <form:errors path="status" class="invalid-feedback d-block"/>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="roles">Roles</label>
+                                        <form:select path="roles" class="form-control" id="roles" multiple="true">
+                                            <form:options items="${allRoles}"/>
+                                        </form:select>
+                                        <form:errors path="roles" class="invalid-feedback d-block"/>
+                                        <small class="form-text text-muted">Hold Ctrl to select multiple roles</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <c:if test="${action eq 'create'}">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="password">Password <span class="text-danger">*</span></label>
+                                            <form:password path="password" class="form-control" id="password" required="true"/>
+                                            <form:errors path="password" class="invalid-feedback d-block"/>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="confirmPassword">Confirm Password <span class="text-danger">*</span></label>
+                                            <input type="password" class="form-control" id="confirmPassword" required/>
+                                            <div id="passwordMatch" class="form-text"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </c:if>
+                            
+                            <div class="form-group">
+                                <div class="form-check">
+                                    <form:checkbox path="enabled" class="form-check-input" id="enabled"/>
+                                    <label class="form-check-label" for="enabled">
+                                        Account Enabled
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group text-right">
+                                <a href="<c:url value='/mvc/users'/>" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary">
+                                    ${action eq 'create' ? 'Create User' : 'Update User'}
+                                </button>
+                            </div>
+                        </form:form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="<c:url value='/static/js/jquery.min.js'/>"></script>
+    <script src="<c:url value='/static/js/bootstrap.min.js'/>"></script>
+    <script>
+        $(document).ready(function() {
+            // Username availability check
+            $('#username').on('blur', function() {
+                var username = $(this).val();
+                if (username && username.length >= 3) {
+                    $.post('<c:url value="/mvc/users/validate-username"/>', {username: username}, function(response) {
+                        if (response.available) {
+                            $('#usernameAvailability').html('<span class="text-success">Username is available</span>');
+                        } else {
+                            $('#usernameAvailability').html('<span class="text-danger">Username is already taken</span>');
+                        }
+                    });
+                }
+            });
+            
+            // Password confirmation
+            $('#confirmPassword').on('input', function() {
+                var password = $('#password').val();
+                var confirmPassword = $(this).val();
+                
+                if (password && confirmPassword) {
+                    if (password === confirmPassword) {
+                        $('#passwordMatch').html('<span class="text-success">Passwords match</span>');
+                    } else {
+                        $('#passwordMatch').html('<span class="text-danger">Passwords do not match</span>');
+                    }
+                }
+            });
+            
+            // Form validation
+            $('form').on('submit', function(e) {
+                var password = $('#password').val();
+                var confirmPassword = $('#confirmPassword').val();
+                
+                if (password && confirmPassword && password !== confirmPassword) {
+                    e.preventDefault();
+                    alert('Passwords do not match');
+                    return false;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+*/
+
+// Filter Configuration
+@WebFilter(filterName = "CharacterEncodingFilter", urlPatterns = {"/*"})
+public class CharacterEncodingFilter implements Filter {
+    
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        // Filter initialization
+    }
+    
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        
+        request.setCharacterEncoding("UTF-8");
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType("text/html; charset=UTF-8");
+        
+        chain.doFilter(request, response);
+    }
+    
+    @Override
+    public void destroy() {
+        // Filter cleanup
+    }
+}
+
+// Session Listener
+@WebListener
+public class SessionListener implements HttpSessionListener {
+    
+    private static final AtomicInteger activeSessions = new AtomicInteger();
+    
+    @Override
+    public void sessionCreated(HttpSessionEvent se) {
+        activeSessions.incrementAndGet();
+        log.info("Session created. Active sessions: {}", activeSessions.get());
+    }
+    
+    @Override
+    public void sessionDestroyed(HttpSessionEvent se) {
+        activeSessions.decrementAndGet();
+        log.info("Session destroyed. Active sessions: {}", activeSessions.get());
+    }
+    
+    public static int getActiveSessions() {
+        return activeSessions.get();
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What is the front controller in Spring MVC?
+   a) @Controller
+   b) DispatcherServlet
+   c) ViewResolver
+   d) HandlerMapping
+   Answer: b) DispatcherServlet
+
+2. Which annotation is used to map HTTP requests to handler methods?
+   a) @RequestHandler
+   b) @RequestMapping
+   c) @URLMapping
+   d) @PathMapping
+   Answer: b) @RequestMapping
+
+3. What does @ModelAttribute do?
+   a) Creates model objects
+   b) Binds request parameters to method parameters
+   c) Validates model attributes
+   d) All of the above
+   Answer: d) All of the above
+
+4. Which object represents the HTTP request in servlets?
+   a) ServletRequest
+   b) HttpServletRequest
+   c) RequestObject
+   d) WebRequest
+   Answer: b) HttpServletRequest
+
+5. What is the default view resolver in Spring MVC?
+   a) InternalResourceViewResolver
+   b) BeanNameViewResolver  
+   c) ContentNegotiatingViewResolver
+   d) No default resolver
+   Answer: a) InternalResourceViewResolver
+
+6. Which JSP directive is used to include other files?
+   a) page
+   b) include
+   c) taglib
+   d) import
+   Answer: b) include
+
+7. What does JSTL stand for?
+   a) Java Server Template Library
+   b) JSP Standard Tag Library
+   c) Java Standard Template Language
+   d) JSP Server Tag Library
+   Answer: b) JSP Standard Tag Library
+
+8. Which method is called when a servlet is first loaded?
+   a) init()
+   b) service()
+   c) doGet()
+   d) start()
+   Answer: a) init()
+
+9. What does @Valid annotation do?
+   a) Validates method parameters
+   b) Triggers JSR-303 validation
+   c) Validates return values
+   d) Validates class structure
+   Answer: b) Triggers JSR-303 validation
+
+10. Which interface is used for custom validation?
+    a) CustomValidator
+    b) Validator
+    c) ValidationHandler
+    d) ValidatorInterface
+    Answer: b) Validator
+
+11. What does RedirectAttributes provide?
+    a) URL redirection
+    b) Flash attributes for redirects
+    c) Redirect validation
+    d) Attribute redirection
+    Answer: b) Flash attributes for redirects
+
+12. Which annotation creates a REST controller?
+    a) @Controller
+    b) @RestController
+    c) @WebController
+    d) @APIController
+    Answer: b) @RestController
+
+13. What is the purpose of HandlerInterceptor?
+    a) Handle HTTP requests
+    b) Intercept request processing
+    c) Handle exceptions
+    d) Manage handlers
+    Answer: b) Intercept request processing
+
+14. Which JSP tag is used for conditional rendering?
+    a) <c:if>
+    b) <c:choose>
+    c) <c:when>
+    d) All of the above
+    Answer: d) All of the above
+
+15. What does @SessionAttribute do?
+    a) Creates session attributes
+    b) Binds session attributes to method parameters
+    c) Manages session lifecycle
+    d) Validates session data
+    Answer: b) Binds session attributes to method parameters
+
+16. Which HTTP method is idempotent?
+    a) POST
+    b) GET
+    c) PATCH
+    d) All methods
+    Answer: b) GET
+
+17. What does @PathVariable extract?
+    a) Query parameters
+    b) Path segments from URL
+    c) Request headers
+    d) Form data
+    Answer: b) Path segments from URL
+
+18. Which object provides access to session data?
+    a) HttpSession
+    b) SessionData
+    c) WebSession
+    d) ServletSession
+    Answer: a) HttpSession
+
+19. What is the default HTTP method for @RequestMapping?
+    a) GET
+    b) POST
+    c) All methods
+    d) No default
+    Answer: c) All methods
+
+20. Which annotation handles exceptions in controllers?
+    a) @ExceptionMapping
+    b) @ExceptionHandler
+    c) @ErrorHandler
+    d) @HandleException
+    Answer: b) @ExceptionHandler
+
+21. What does @ResponseBody do?
+    a) Creates response objects
+    b) Converts return value to HTTP response body
+    c) Validates responses
+    d) Handles response errors
+    Answer: b) Converts return value to HTTP response body
+
+22. Which scope is default for Spring MVC controllers?
+    a) Singleton
+    b) Prototype
+    c) Request
+    d) Session
+    Answer: a) Singleton
+
+23. What does ViewResolver do?
+    a) Resolves view conflicts
+    b) Maps logical view names to actual views
+    c) Creates view objects
+    d) Validates views
+    Answer: b) Maps logical view names to actual views
+
+24. Which filter encoding is commonly used?
+    a) ISO-8859-1
+    b) ASCII
+    c) UTF-8
+    d) UTF-16
+    Answer: c) UTF-8
+
+25. What does @EnableWebMvc do?
+    a) Enables web functionality
+    b) Imports Spring MVC configuration
+    c) Enables MVC annotations
+    d) All of the above
+    Answer: b) Imports Spring MVC configuration
+
+====================================================================

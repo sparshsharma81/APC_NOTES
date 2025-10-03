@@ -1,0 +1,267 @@
+====================================================================
+                        FILE OPERATIONS IN JAVA
+====================================================================
+
+INTRODUCTION:
+File operations in Java involve creating, reading, writing, deleting, and manipulating files and directories. Java provides multiple approaches: traditional File class, NIO.2 Path/Files classes, and various stream classes for file I/O operations.
+
+KEY CONCEPTS:
+
+1. FILE CLASS (Legacy):
+   - Represents file and directory pathnames
+   - Methods: exists(), delete(), mkdir(), isFile(), isDirectory()
+   - Limited functionality compared to newer APIs
+
+2. PATH INTERFACE (NIO.2):
+   - Represents file system paths
+   - Platform-independent path operations
+   - Methods: getFileName(), getParent(), resolve(), relativize()
+
+3. FILES CLASS (NIO.2):
+   - Utility class for file operations
+   - Static methods for file manipulation
+   - Methods: copy(), move(), delete(), createFile(), createDirectory()
+
+4. FILE ATTRIBUTES:
+   - BasicFileAttributes: Size, creation time, modification time
+   - DosFileAttributes: Windows-specific attributes
+   - PosixFileAttributes: POSIX-specific attributes
+
+5. FILE WATCHING:
+   - WatchService: Monitor file system changes
+   - WatchKey: Represents registration with watch service
+   - StandardWatchEventKinds: Types of events (CREATE, MODIFY, DELETE)
+
+6. FILE PERMISSIONS:
+   - Set and get file permissions
+   - Platform-specific permission models
+   - PosixFilePermissions class for POSIX systems
+
+EXAMPLE CODE:
+
+// File class operations
+File file = new File("example.txt");
+if (file.exists()) {
+    System.out.println("File size: " + file.length());
+    System.out.println("Last modified: " + file.lastModified());
+}
+
+// Path operations
+Path path = Paths.get("documents", "file.txt");
+Path absolutePath = path.toAbsolutePath();
+Path parent = path.getParent();
+
+// Creating files and directories
+Files.createFile(Paths.get("newfile.txt"));
+Files.createDirectory(Paths.get("newdir"));
+Files.createDirectories(Paths.get("parent/child/grandchild"));
+
+// Reading and writing files
+List<String> lines = Files.readAllLines(Paths.get("input.txt"));
+Files.write(Paths.get("output.txt"), lines, StandardCharsets.UTF_8);
+
+// Copying and moving files
+Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
+
+// Deleting files
+Files.delete(path);
+Files.deleteIfExists(path);
+
+// File attributes
+BasicFileAttributes attrs = Files.readAttributes(path, BasicFileAttributes.class);
+System.out.println("Creation time: " + attrs.creationTime());
+System.out.println("Size: " + attrs.size());
+
+// Walking file tree
+Files.walk(Paths.get("directory"))
+     .filter(Files::isRegularFile)
+     .forEach(System.out::println);
+
+// File watching
+WatchService watchService = FileSystems.getDefault().newWatchService();
+Path dir = Paths.get("watchdir");
+dir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE,
+             StandardWatchEventKinds.ENTRY_MODIFY,
+             StandardWatchEventKinds.ENTRY_DELETE);
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. Which class represents file and directory pathnames in traditional I/O?
+   a) Path
+   b) File
+   c) Files
+   d) Directory
+   Answer: b) File
+
+2. What does the exists() method of File class return?
+   a) File size
+   b) File path
+   c) boolean indicating if file exists
+   d) File permissions
+   Answer: c) boolean indicating if file exists
+
+3. Which interface represents file system paths in NIO.2?
+   a) File
+   b) Path
+   c) Files
+   d) FileSystem
+   Answer: b) Path
+
+4. What is the main advantage of NIO.2 over traditional File class?
+   a) Better performance
+   b) More comprehensive operations and better error handling
+   c) Smaller memory footprint
+   d) Faster compilation
+   Answer: b) More comprehensive operations and better error handling
+
+5. Which method creates a new empty file?
+   a) Files.newFile()
+   b) Files.createFile()
+   c) Files.makeFile()
+   d) Files.addFile()
+   Answer: b) Files.createFile()
+
+6. What does Files.createDirectories() do?
+   a) Creates only one directory
+   b) Creates directory and all parent directories
+   c) Lists all directories
+   d) Deletes directories
+   Answer: b) Creates directory and all parent directories
+
+7. Which method reads all lines from a file into a List?
+   a) Files.readLines()
+   b) Files.readAllLines()
+   c) Files.getLines()
+   d) Files.loadLines()
+   Answer: b) Files.readAllLines()
+
+8. What is the difference between Files.delete() and Files.deleteIfExists()?
+   a) No difference
+   b) deleteIfExists() throws exception if file doesn't exist
+   c) delete() throws exception if file doesn't exist
+   d) deleteIfExists() is deprecated
+   Answer: c) delete() throws exception if file doesn't exist
+
+9. Which copy option replaces existing target file?
+   a) REPLACE_EXISTING
+   b) OVERWRITE_EXISTING
+   c) REPLACE_TARGET
+   d) COPY_REPLACE
+   Answer: a) REPLACE_EXISTING
+
+10. What does the toAbsolutePath() method return?
+    a) Relative path
+    b) Absolute path
+    c) File name only
+    d) Parent directory
+    Answer: b) Absolute path
+
+11. Which class provides file attributes like size and creation time?
+    a) FileAttributes
+    b) BasicFileAttributes
+    c) AttributeFile
+    d) FileInfo
+    Answer: b) BasicFileAttributes
+
+12. What is WatchService used for?
+    a) Watching file content
+    b) Monitoring file system changes
+    c) Watching file permissions
+    d) Monitoring file size
+    Answer: b) Monitoring file system changes
+
+13. Which method is used to traverse directory tree?
+    a) Files.traverse()
+    b) Files.walk()
+    c) Files.iterate()
+    d) Files.scan()
+    Answer: b) Files.walk()
+
+14. What does the resolve() method do on Path?
+    a) Resolves file conflicts
+    b) Combines paths
+    c) Resolves symbolic links
+    d) Resolves file permissions
+    Answer: b) Combines paths
+
+15. Which StandardWatchEventKind represents file creation?
+    a) ENTRY_NEW
+    b) ENTRY_CREATE
+    c) ENTRY_ADD
+    d) FILE_CREATE
+    Answer: b) ENTRY_CREATE
+
+16. What happens if you try to create a file that already exists using Files.createFile()?
+    a) File is overwritten
+    b) FileAlreadyExistsException is thrown
+    c) Nothing happens
+    d) File is appended
+    Answer: b) FileAlreadyExistsException is thrown
+
+17. Which method moves a file from one location to another?
+    a) Files.transfer()
+    b) Files.move()
+    c) Files.relocate()
+    d) Files.shift()
+    Answer: b) Files.move()
+
+18. What does the getFileName() method return?
+    a) Full file path
+    b) File name and extension only
+    c) File extension only
+    d) Directory name
+    Answer: b) File name and extension only
+
+19. Which method checks if a path represents a regular file?
+    a) Files.isFile()
+    b) Files.isRegularFile()
+    c) Files.isNormalFile()
+    d) Files.isStandardFile()
+    Answer: b) Files.isRegularFile()
+
+20. What is the purpose of StandardCopyOption.ATOMIC_MOVE?
+    a) Moves file very fast
+    b) Ensures move operation is atomic
+    c) Moves file automatically
+    d) Creates atomic file structure
+    Answer: b) Ensures move operation is atomic
+
+21. Which exception is thrown when a file operation fails?
+    a) FileException
+    b) IOException
+    c) FileOperationException
+    d) PathException
+    Answer: b) IOException
+
+22. What does the relativize() method do?
+    a) Makes path relative to current directory
+    b) Constructs relative path between two paths
+    c) Converts absolute path to relative
+    d) Creates relative file link
+    Answer: b) Constructs relative path between two paths
+
+23. Which method returns the parent directory of a path?
+    a) getParent()
+    b) getDirectory()
+    c) getFolder()
+    d) getContainer()
+    Answer: a) getParent()
+
+24. What does Files.size() return?
+    a) File size in KB
+    b) File size in bytes
+    c) File size in MB
+    d) File size as string
+    Answer: b) File size in bytes
+
+25. Which is the correct way to create a Path object?
+    a) new Path("file.txt")
+    b) Path.of("file.txt")
+    c) Paths.get("file.txt")
+    d) Both b and c
+    Answer: d) Both b and c
+
+====================================================================

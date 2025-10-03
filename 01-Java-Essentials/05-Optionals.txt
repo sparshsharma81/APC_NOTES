@@ -1,0 +1,218 @@
+====================================================================
+                            OPTIONALS IN JAVA
+====================================================================
+
+INTRODUCTION:
+Optional is a container class introduced in Java 8 to represent values that might or might not be present. It helps avoid NullPointerException and makes code more readable by explicitly handling the absence of values.
+
+KEY CONCEPTS:
+
+1. CREATING OPTIONALS:
+   - Optional.empty(): Empty optional
+   - Optional.of(value): Optional with non-null value
+   - Optional.ofNullable(value): Optional that may contain null
+
+2. CHECKING PRESENCE:
+   - isPresent(): Returns true if value present
+   - isEmpty(): Returns true if value absent (Java 11+)
+
+3. RETRIEVING VALUES:
+   - get(): Returns value if present, throws exception if empty
+   - orElse(defaultValue): Returns value or default
+   - orElseGet(supplier): Returns value or supplier result
+   - orElseThrow(): Throws exception if empty
+
+4. TRANSFORMING VALUES:
+   - map(function): Transform value if present
+   - flatMap(function): Transform and flatten nested optionals
+   - filter(predicate): Filter based on condition
+
+5. CONDITIONAL ACTIONS:
+   - ifPresent(consumer): Execute action if value present
+   - ifPresentOrElse(consumer, runnable): Execute different actions
+
+BEST PRACTICES:
+- Don't use Optional.get() without checking
+- Use Optional as return type, not as field
+- Don't use Optional for collections (return empty collection)
+- Prefer orElse() for simple defaults, orElseGet() for expensive operations
+
+EXAMPLE CODE:
+
+// Creating Optionals
+Optional<String> empty = Optional.empty();
+Optional<String> name = Optional.of("John");
+Optional<String> nullable = Optional.ofNullable(getName());
+
+// Checking and retrieving
+if (name.isPresent()) {
+    System.out.println(name.get());
+}
+
+String result = name.orElse("Default Name");
+String computed = name.orElseGet(() -> computeDefault());
+
+// Transforming
+Optional<Integer> length = name.map(String::length);
+Optional<String> upperCase = name
+    .filter(n -> n.length() > 3)
+    .map(String::toUpperCase);
+
+// Method chaining
+String finalResult = Optional.ofNullable(user)
+    .map(User::getAddress)
+    .map(Address::getStreet)
+    .orElse("No street found");
+
+// Conditional actions
+name.ifPresent(System.out::println);
+name.ifPresentOrElse(
+    System.out::println,
+    () -> System.out.println("Name not found")
+);
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. In which Java version was Optional introduced?
+   a) Java 7
+   b) Java 8
+   c) Java 9
+   d) Java 10
+   Answer: b) Java 8
+
+2. What is the main purpose of Optional class?
+   a) Performance optimization
+   b) Memory management
+   c) Avoiding NullPointerException
+   d) Type safety
+   Answer: c) Avoiding NullPointerException
+
+3. Which method creates an empty Optional?
+   a) Optional.null()
+   b) Optional.empty()
+   c) Optional.void()
+   d) Optional.none()
+   Answer: b) Optional.empty()
+
+4. What happens when you call Optional.of(null)?
+   a) Returns empty Optional
+   b) Returns Optional with null
+   c) Throws NullPointerException
+   d) Compilation error
+   Answer: c) Throws NullPointerException
+
+5. Which method should be used for nullable values?
+   a) Optional.of()
+   b) Optional.empty()
+   c) Optional.ofNullable()
+   d) Optional.nullable()
+   Answer: c) Optional.ofNullable()
+
+6. What does orElse() method do?
+   a) Returns alternative value if empty
+   b) Throws exception if empty
+   c) Checks if value present
+   d) Maps the value
+   Answer: a) Returns alternative value if empty
+
+7. What is the difference between orElse() and orElseGet()?
+   a) No difference
+   b) orElse takes value, orElseGet takes supplier
+   c) orElse is faster
+   d) orElseGet is deprecated
+   Answer: b) orElse takes value, orElseGet takes supplier
+
+8. Which method transforms Optional value?
+   a) transform()
+   b) convert()
+   c) map()
+   d) change()
+   Answer: c) map()
+
+9. What does flatMap() do in Optional?
+   a) Flattens nested collections
+   b) Flattens nested Optionals
+   c) Maps and filters
+   d) Creates flat structure
+   Answer: b) Flattens nested Optionals
+
+10. Which method was introduced in Java 11 for Optional?
+    a) isAbsent()
+    b) isEmpty()
+    c) hasValue()
+    d) notPresent()
+    Answer: b) isEmpty()
+
+11. What is wrong with using Optional.get() directly?
+    a) It's deprecated
+    b) It's slow
+    c) It can throw NoSuchElementException
+    d) It's not thread-safe
+    Answer: c) It can throw NoSuchElementException
+
+12. Which method executes action only if value is present?
+    a) ifPresent()
+    b) executeIf()
+    c) whenPresent()
+    d) doIf()
+    Answer: a) ifPresent()
+
+13. Should Optional be used as class fields?
+    a) Yes, always
+    b) No, it's not recommended
+    c) Only for final fields
+    d) Only for static fields
+    Answer: b) No, it's not recommended
+
+14. What should you return instead of Optional of empty collection?
+    a) Optional.empty()
+    b) null
+    c) Empty collection directly
+    d) Optional with empty collection
+    Answer: c) Empty collection directly
+
+15. Which method throws exception if Optional is empty?
+    a) orElseThrow()
+    b) throwIfEmpty()
+    c) getOrThrow()
+    d) requireValue()
+    Answer: a) orElseThrow()
+
+16. What does filter() method do in Optional?
+    a) Removes null values
+    b) Applies predicate and returns Optional
+    c) Filters collection inside Optional
+    d) Creates filtered view
+    Answer: b) Applies predicate and returns Optional
+
+17. Can Optional contain null value?
+    a) Yes, always
+    b) No, never
+    c) Only if created with ofNullable()
+    d) Only in certain conditions
+    Answer: b) No, never
+
+18. What is method chaining in Optional?
+    a) Calling multiple methods sequentially
+    b) Creating chain of Optionals
+    c) Linking Optional objects
+    d) Method inheritance
+    Answer: a) Calling multiple methods sequentially
+
+19. Which is better for expensive default value computation?
+    a) orElse()
+    b) orElseGet()
+    c) Both are same
+    d) Depends on situation
+    Answer: b) orElseGet()
+
+20. What does ifPresentOrElse() do?
+    a) Checks if present or else throws exception
+    b) Executes different actions based on presence
+    c) Returns present value or else default
+    d) Creates conditional Optional
+    Answer: b) Executes different actions based on presence
+
+====================================================================

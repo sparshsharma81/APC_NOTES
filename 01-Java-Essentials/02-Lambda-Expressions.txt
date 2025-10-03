@@ -1,0 +1,208 @@
+====================================================================
+                        LAMBDA EXPRESSIONS IN JAVA
+====================================================================
+
+INTRODUCTION:
+Lambda expressions were introduced in Java 8 as a way to provide a clear and concise way to represent one method interface using an expression. They enable functional programming in Java and make code more readable and concise.
+
+KEY CONCEPTS:
+
+1. LAMBDA SYNTAX:
+   (parameters) -> expression
+   (parameters) -> { statements; }
+
+2. FUNCTIONAL INTERFACES:
+   - Interface with exactly one abstract method
+   - Can have multiple default and static methods
+   - Annotated with @FunctionalInterface (optional but recommended)
+
+3. BUILT-IN FUNCTIONAL INTERFACES:
+   - Predicate<T>: boolean test(T t)
+   - Function<T,R>: R apply(T t)
+   - Consumer<T>: void accept(T t)
+   - Supplier<T>: T get()
+   - UnaryOperator<T>: T apply(T t)
+   - BinaryOperator<T>: T apply(T t1, T t2)
+
+4. METHOD REFERENCES:
+   - Static method: ClassName::staticMethod
+   - Instance method: instance::instanceMethod
+   - Constructor: ClassName::new
+
+5. VARIABLE CAPTURE:
+   - Local variables must be effectively final
+   - Instance variables can be accessed and modified
+
+EXAMPLE CODE:
+
+// Traditional way
+Runnable r1 = new Runnable() {
+    public void run() {
+        System.out.println("Hello World");
+    }
+};
+
+// Lambda expression
+Runnable r2 = () -> System.out.println("Hello World");
+
+// With parameters
+Comparator<String> comp = (s1, s2) -> s1.compareTo(s2);
+
+// Method reference
+List<String> names = Arrays.asList("John", "Jane", "Bob");
+names.forEach(System.out::println);
+
+// Custom functional interface
+@FunctionalInterface
+interface Calculator {
+    int calculate(int a, int b);
+}
+
+Calculator add = (a, b) -> a + b;
+Calculator multiply = (a, b) -> a * b;
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. In which Java version were Lambda expressions introduced?
+   a) Java 7
+   b) Java 8
+   c) Java 9
+   d) Java 10
+   Answer: b) Java 8
+
+2. What is a functional interface?
+   a) Interface with no methods
+   b) Interface with exactly one abstract method
+   c) Interface with multiple methods
+   d) Interface with only static methods
+   Answer: b) Interface with exactly one abstract method
+
+3. Which symbol is used in lambda expressions?
+   a) =>
+   b) ->
+   c) ::
+   d) <<
+   Answer: b) ->
+
+4. What does the Predicate functional interface represent?
+   a) Function that takes one argument and returns a result
+   b) Function that takes one argument and returns boolean
+   c) Function that takes no arguments and returns a result
+   d) Function that takes one argument and returns nothing
+   Answer: b) Function that takes one argument and returns boolean
+
+5. Which of the following is a valid lambda expression?
+   a) x -> x * 2
+   b) (x) -> x * 2
+   c) (int x) -> x * 2
+   d) All of the above
+   Answer: d) All of the above
+
+6. What is method reference in Java 8?
+   a) Calling a method
+   b) Shorthand for lambda expressions
+   c) Creating method objects
+   d) Referencing method parameters
+   Answer: b) Shorthand for lambda expressions
+
+7. Which functional interface has the method signature: T get()?
+   a) Consumer<T>
+   b) Supplier<T>
+   c) Function<T,R>
+   d) Predicate<T>
+   Answer: b) Supplier<T>
+
+8. What is variable capture in lambda expressions?
+   a) Creating new variables
+   b) Accessing variables from enclosing scope
+   c) Capturing method parameters
+   d) Storing lambda expressions
+   Answer: b) Accessing variables from enclosing scope
+
+9. Which of the following represents a constructor reference?
+   a) ClassName::method
+   b) ClassName::new
+   c) instance::method
+   d) ClassName.new
+   Answer: b) ClassName::new
+
+10. What annotation is used to mark functional interfaces?
+    a) @Functional
+    b) @FunctionalInterface
+    c) @Lambda
+    d) @Interface
+    Answer: b) @FunctionalInterface
+
+11. Which is true about lambda expressions and local variables?
+    a) Local variables must be final
+    b) Local variables must be effectively final
+    c) Local variables can be modified
+    d) Local variables cannot be accessed
+    Answer: b) Local variables must be effectively final
+
+12. What does the Consumer functional interface do?
+    a) Returns a value
+    b) Takes input and returns boolean
+    c) Takes input and returns nothing
+    d) Takes no input and returns value
+    Answer: c) Takes input and returns nothing
+
+13. Which method reference type is System.out::println?
+    a) Static method reference
+    b) Instance method reference
+    c) Constructor reference
+    d) Arbitrary object method reference
+    Answer: b) Instance method reference
+
+14. What is the return type of Function<String, Integer>?
+    a) String
+    b) Integer
+    c) Boolean
+    d) Void
+    Answer: b) Integer
+
+15. Which lambda expression is equivalent to (x, y) -> x + y?
+    a) Integer::sum
+    b) Math::add
+    c) (x, y) -> { return x + y; }
+    d) Both a and c
+    Answer: d) Both a and c
+
+16. What happens if a functional interface has two abstract methods?
+    a) Compilation error
+    b) Runtime error
+    c) Only first method is considered
+    d) Both methods are implemented
+    Answer: a) Compilation error
+
+17. Which stream operation uses Consumer functional interface?
+    a) map()
+    b) filter()
+    c) forEach()
+    d) reduce()
+    Answer: c) forEach()
+
+18. What is the difference between UnaryOperator and Function?
+    a) No difference
+    b) UnaryOperator takes and returns same type
+    c) Function is more general
+    d) Both b and c
+    Answer: d) Both b and c
+
+19. Can lambda expressions access instance variables?
+    a) Yes, always
+    b) No, never
+    c) Yes, if they are final
+    d) Yes, and can modify them
+    Answer: d) Yes, and can modify them
+
+20. Which is a valid BiFunction lambda expression?
+    a) (x, y) -> x + y
+    b) x -> x * 2
+    c) () -> "Hello"
+    d) x -> x.toString()
+    Answer: a) (x, y) -> x + y
+
+====================================================================

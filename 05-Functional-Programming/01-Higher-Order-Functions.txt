@@ -1,0 +1,504 @@
+====================================================================
+                        HIGHER-ORDER FUNCTIONS IN JAVA
+====================================================================
+
+INTRODUCTION:
+Higher-order functions are functions that either take other functions as parameters or return functions as results. In Java, this concept is implemented through functional interfaces, lambda expressions, and method references, enabling functional programming paradigms.
+
+KEY CONCEPTS:
+
+1. HIGHER-ORDER FUNCTION DEFINITION:
+   - Functions that accept functions as parameters
+   - Functions that return functions as results
+   - Enable function composition and transformation
+   - Core principle of functional programming
+
+2. FUNCTIONAL INTERFACES:
+   - Single Abstract Method (SAM) interfaces
+   - Can be used as lambda expression targets
+   - @FunctionalInterface annotation for clarity
+   - Built-in functional interfaces in java.util.function
+
+3. BUILT-IN FUNCTIONAL INTERFACES:
+   - Function<T,R>: Takes T, returns R
+   - Predicate<T>: Takes T, returns boolean
+   - Consumer<T>: Takes T, returns void
+   - Supplier<T>: Takes nothing, returns T
+   - UnaryOperator<T>: Takes T, returns T
+   - BinaryOperator<T>: Takes two T, returns T
+
+4. FUNCTION COMPOSITION:
+   - andThen(): f.andThen(g) = g(f(x))
+   - compose(): f.compose(g) = f(g(x))
+   - Chaining operations together
+   - Building complex operations from simple ones
+
+5. CURRYING AND PARTIAL APPLICATION:
+   - Breaking down multi-parameter functions
+   - Creating specialized versions of functions
+   - Function factories and builders
+
+EXAMPLE CODE:
+
+import java.util.*;
+import java.util.function.*;
+import java.util.stream.*;
+
+// Basic Higher-Order Function Examples
+
+// Function that takes another function as parameter
+public static <T, R> List<R> map(List<T> list, Function<T, R> mapper) {
+    List<R> result = new ArrayList<>();
+    for (T item : list) {
+        result.add(mapper.apply(item));
+    }
+    return result;
+}
+
+// Function that returns a function
+public static Function<Integer, Integer> multiplyBy(int factor) {
+    return x -> x * factor;
+}
+
+// Usage examples
+public class HigherOrderFunctionDemo {
+    public static void main(String[] args) {
+        List<String> names = Arrays.asList("alice", "bob", "charlie");
+        
+        // Using higher-order function with lambda
+        List<String> upperNames = map(names, String::toUpperCase);
+        List<Integer> lengths = map(names, String::length);
+        
+        // Function that returns a function
+        Function<Integer, Integer> doubler = multiplyBy(2);
+        Function<Integer, Integer> tripler = multiplyBy(3);
+        
+        System.out.println(doubler.apply(5));  // 10
+        System.out.println(tripler.apply(5));  // 15
+    }
+}
+
+// Function Composition Examples
+public class FunctionComposition {
+    public static void main(String[] args) {
+        Function<String, String> addExclamation = s -> s + "!";
+        Function<String, String> toUpperCase = String::toUpperCase;
+        
+        // andThen: first function, then second function
+        Function<String, String> exclamationThenUpper = 
+            addExclamation.andThen(toUpperCase);
+        
+        // compose: second function, then first function
+        Function<String, String> upperThenExclamation = 
+            toUpperCase.compose(addExclamation);
+        
+        String input = "hello";
+        System.out.println(exclamationThenUpper.apply(input)); // "HELLO!"
+        System.out.println(upperThenExclamation.apply(input)); // "HELLO!"
+        
+        // Complex composition
+        Function<Integer, Integer> addOne = x -> x + 1;
+        Function<Integer, Integer> multiplyByTwo = x -> x * 2;
+        Function<Integer, Integer> square = x -> x * x;
+        
+        Function<Integer, Integer> complexFunction = 
+            addOne.andThen(multiplyByTwo).andThen(square);
+        
+        System.out.println(complexFunction.apply(3)); // ((3+1)*2)^2 = 64
+    }
+}
+
+// Predicate Composition
+public class PredicateComposition {
+    public static void main(String[] args) {
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+        
+        Predicate<Integer> isEven = n -> n % 2 == 0;
+        Predicate<Integer> isGreaterThanFive = n -> n > 5;
+        
+        // Predicate composition
+        Predicate<Integer> evenAndGreaterThanFive = isEven.and(isGreaterThanFive);
+        Predicate<Integer> evenOrGreaterThanFive = isEven.or(isGreaterThanFive);
+        Predicate<Integer> notEven = isEven.negate();
+        
+        System.out.println("Even and > 5: " + 
+            numbers.stream().filter(evenAndGreaterThanFive).collect(Collectors.toList()));
+        // [6, 8, 10]
+        
+        System.out.println("Even or > 5: " + 
+            numbers.stream().filter(evenOrGreaterThanFive).collect(Collectors.toList()));
+        // [2, 4, 6, 7, 8, 9, 10]
+        
+        System.out.println("Not even: " + 
+            numbers.stream().filter(notEven).collect(Collectors.toList()));
+        // [1, 3, 5, 7, 9]
+    }
+}
+
+// Custom Higher-Order Functions
+public class CustomHigherOrderFunctions {
+    
+    // Function that applies operation twice
+    public static <T> Function<T, T> twice(Function<T, T> function) {
+        return x -> function.apply(function.apply(x));
+    }
+    
+    // Function that repeats operation n times
+    public static <T> Function<T, T> repeat(Function<T, T> function, int times) {
+        return x -> {
+            T result = x;
+            for (int i = 0; i < times; i++) {
+                result = function.apply(result);
+            }
+            return result;
+        };
+    }
+    
+    // Conditional function application
+    public static <T> Function<T, T> conditional(Predicate<T> condition, 
+                                                 Function<T, T> thenFunction,
+                                                 Function<T, T> elseFunction) {
+        return x -> condition.test(x) ? thenFunction.apply(x) : elseFunction.apply(x);
+    }
+    
+    // Function memoization (caching results)
+    public static <T, R> Function<T, R> memoize(Function<T, R> function) {
+        Map<T, R> cache = new HashMap<>();
+        return x -> cache.computeIfAbsent(x, function);
+    }
+    
+    public static void main(String[] args) {
+        Function<Integer, Integer> addOne = x -> x + 1;
+        
+        // Apply function twice
+        Function<Integer, Integer> addTwo = twice(addOne);
+        System.out.println(addTwo.apply(5)); // 7
+        
+        // Repeat function 5 times
+        Function<Integer, Integer> addFive = repeat(addOne, 5);
+        System.out.println(addFive.apply(10)); // 15
+        
+        // Conditional function
+        Function<Integer, Integer> conditionalProcessor = conditional(
+            x -> x > 0,           // if positive
+            x -> x * 2,           // double it
+            x -> Math.abs(x)      // make it positive
+        );
+        
+        System.out.println(conditionalProcessor.apply(5));  // 10
+        System.out.println(conditionalProcessor.apply(-3)); // 3
+        
+        // Memoized expensive function
+        Function<Integer, Integer> expensiveFunction = memoize(x -> {
+            System.out.println("Computing for " + x);
+            // Simulate expensive computation
+            return x * x;
+        });
+        
+        System.out.println(expensiveFunction.apply(5)); // Computing for 5, then 25
+        System.out.println(expensiveFunction.apply(5)); // 25 (cached, no computation)
+    }
+}
+
+// Currying Examples
+public class CurryingExamples {
+    
+    // Traditional multi-parameter function
+    public static int add(int a, int b, int c) {
+        return a + b + c;
+    }
+    
+    // Curried version
+    public static Function<Integer, Function<Integer, Function<Integer, Integer>>> addCurried() {
+        return a -> b -> c -> a + b + c;
+    }
+    
+    // Partial application factory
+    public static Function<Integer, Integer> createAdder(int base) {
+        return x -> base + x;
+    }
+    
+    // String formatter factory
+    public static Function<Object, String> createFormatter(String template) {
+        return value -> String.format(template, value);
+    }
+    
+    public static void main(String[] args) {
+        // Using curried function
+        Function<Integer, Function<Integer, Function<Integer, Integer>>> curriedAdd = addCurried();
+        
+        // Full application
+        int result1 = curriedAdd.apply(1).apply(2).apply(3); // 6
+        
+        // Partial application
+        Function<Integer, Function<Integer, Integer>> addToOne = curriedAdd.apply(1);
+        Function<Integer, Integer> addOneAndTwo = addToOne.apply(2);
+        int result2 = addOneAndTwo.apply(3); // 6
+        
+        // Creating specialized functions
+        Function<Integer, Integer> addTen = createAdder(10);
+        Function<Integer, Integer> addHundred = createAdder(100);
+        
+        System.out.println(addTen.apply(5));     // 15
+        System.out.println(addHundred.apply(5)); // 105
+        
+        // Creating specialized formatters
+        Function<Object, String> percentFormatter = createFormatter("%.2f%%");
+        Function<Object, String> currencyFormatter = createFormatter("$%.2f");
+        
+        System.out.println(percentFormatter.apply(85.5));  // "85.50%"
+        System.out.println(currencyFormatter.apply(29.99)); // "$29.99"
+    }
+}
+
+// Stream Operations as Higher-Order Functions
+public class StreamHigherOrderFunctions {
+    public static void main(String[] args) {
+        List<String> words = Arrays.asList("hello", "world", "java", "functional", "programming");
+        
+        // map is a higher-order function (takes function as parameter)
+        List<Integer> lengths = words.stream()
+            .map(String::length)  // Function<String, Integer>
+            .collect(Collectors.toList());
+        
+        // filter is a higher-order function (takes predicate)
+        List<String> longWords = words.stream()
+            .filter(word -> word.length() > 4)  // Predicate<String>
+            .collect(Collectors.toList());
+        
+        // reduce is a higher-order function (takes binary operator)
+        Optional<String> concatenated = words.stream()
+            .reduce((a, b) -> a + " " + b);  // BinaryOperator<String>
+        
+        // Custom collector (higher-order function)
+        String joined = words.stream()
+            .collect(Collectors.joining(", ", "[", "]"));
+        
+        System.out.println("Lengths: " + lengths);
+        System.out.println("Long words: " + longWords);
+        System.out.println("Concatenated: " + concatenated.orElse(""));
+        System.out.println("Joined: " + joined);
+    }
+}
+
+// Function Interface Chaining
+public class FunctionChaining {
+    
+    // Generic pipeline builder
+    public static <T> Pipeline<T> pipeline(T initialValue) {
+        return new Pipeline<>(initialValue);
+    }
+    
+    static class Pipeline<T> {
+        private T value;
+        
+        public Pipeline(T value) {
+            this.value = value;
+        }
+        
+        public <R> Pipeline<R> then(Function<T, R> function) {
+            return new Pipeline<>(function.apply(value));
+        }
+        
+        public Pipeline<T> when(Predicate<T> condition, Function<T, T> function) {
+            return condition.test(value) ? 
+                new Pipeline<>(function.apply(value)) : this;
+        }
+        
+        public T get() {
+            return value;
+        }
+    }
+    
+    public static void main(String[] args) {
+        String result = pipeline("  hello world  ")
+            .then(String::trim)
+            .then(String::toUpperCase)
+            .when(s -> s.length() > 5, s -> s + "!")
+            .then(s -> "Result: " + s)
+            .get();
+            
+        System.out.println(result); // "Result: HELLO WORLD!"
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What is a higher-order function?
+   a) A function with high priority
+   b) A function that takes or returns other functions
+   c) A function with many parameters
+   d) A function with complex logic
+   Answer: b) A function that takes or returns other functions
+
+2. Which annotation marks functional interfaces?
+   a) @Function
+   b) @FunctionalInterface
+   c) @Lambda
+   d) @HigherOrder
+   Answer: b) @FunctionalInterface
+
+3. What does Function<T,R> represent?
+   a) Takes T and R, returns nothing
+   b) Takes T, returns R
+   c) Takes nothing, returns T and R
+   d) Takes and returns T or R
+   Answer: b) Takes T, returns R
+
+4. What does andThen() do in function composition?
+   a) f.andThen(g) = f(g(x))
+   b) f.andThen(g) = g(f(x))
+   c) Adds functions together
+   d) Delays function execution
+   Answer: b) f.andThen(g) = g(f(x))
+
+5. What does compose() do in function composition?
+   a) f.compose(g) = f(g(x))
+   b) f.compose(g) = g(f(x))
+   c) Creates new function
+   d) Combines function results
+   Answer: a) f.compose(g) = f(g(x))
+
+6. What is currying?
+   a) Adding spice to functions
+   b) Breaking multi-parameter function into single-parameter functions
+   c) Combining functions
+   d) Caching function results
+   Answer: b) Breaking multi-parameter function into single-parameter functions
+
+7. What does Predicate<T> return?
+   a) T
+   b) boolean
+   c) void
+   d) Object
+   Answer: b) boolean
+
+8. How do you combine predicates with AND logic?
+   a) predicate1.and(predicate2)
+   b) predicate1 && predicate2
+   c) predicate1.plus(predicate2)
+   d) predicate1.combine(predicate2)
+   Answer: a) predicate1.and(predicate2)
+
+9. What does Supplier<T> do?
+   a) Takes T, returns nothing
+   b) Takes nothing, returns T
+   c) Supplies parameters to functions
+   d) Manages function supply
+   Answer: b) Takes nothing, returns T
+
+10. What is the purpose of UnaryOperator<T>?
+    a) Single parameter function
+    b) Takes T, returns T (same type)
+    c) Operates on one element
+    d) Unary mathematical operation
+    Answer: b) Takes T, returns T (same type)
+
+11. What does Consumer<T> do?
+    a) Takes T, returns T
+    b) Takes T, returns boolean
+    c) Takes T, returns void
+    d) Consumes memory
+    Answer: c) Takes T, returns void
+
+12. Which is an example of higher-order function in streams?
+    a) map()
+    b) filter()
+    c) reduce()
+    d) All of the above
+    Answer: d) All of the above
+
+13. What is function memoization?
+    a) Remembering function names
+    b) Caching function results
+    c) Function documentation
+    d) Function composition
+    Answer: b) Caching function results
+
+14. What does BinaryOperator<T> represent?
+    a) Takes two T, returns T
+    b) Binary mathematical operations
+    c) Two-parameter function
+    d) Operates on binary data
+    Answer: a) Takes two T, returns T
+
+15. How do you negate a predicate?
+    a) predicate.not()
+    b) predicate.negate()
+    c) !predicate
+    d) predicate.inverse()
+    Answer: b) predicate.negate()
+
+16. What is partial application?
+    a) Applying some parameters to multi-parameter function
+    b) Incomplete function execution
+    c) Part of function composition
+    d) Partial result return
+    Answer: a) Applying some parameters to multi-parameter function
+
+17. Which method creates identity function?
+    a) Function.identity()
+    b) Function.same()
+    c) Function.self()
+    d) Function.id()
+    Answer: a) Function.identity()
+
+18. What does Function.identity() do?
+    a) Returns null
+    b) Returns the input unchanged
+    c) Returns function name
+    d) Creates new identity
+    Answer: b) Returns the input unchanged
+
+19. How do you combine predicates with OR logic?
+    a) predicate1.or(predicate2)
+    b) predicate1 || predicate2
+    c) predicate1.plus(predicate2)
+    d) predicate1.union(predicate2)
+    Answer: a) predicate1.or(predicate2)
+
+20. What is the main benefit of higher-order functions?
+    a) Better performance
+    b) Code reusability and composition
+    c) Less memory usage
+    d) Faster compilation
+    Answer: b) Code reusability and composition
+
+21. Can you chain multiple andThen() calls?
+    a) No, only one allowed
+    b) Yes, unlimited chaining
+    c) Only two calls
+    d) Depends on return type
+    Answer: b) Yes, unlimited chaining
+
+22. What happens if you apply null to a function?
+    a) Returns null
+    b) NullPointerException
+    c) Ignores the call
+    d) Depends on implementation
+    Answer: b) NullPointerException
+
+23. Which is NOT a built-in functional interface?
+    a) Function
+    b) Predicate
+    c) Transformer
+    d) Consumer
+    Answer: c) Transformer
+
+24. What is function composition good for?
+    a) Building complex operations from simple ones
+    b) Improving performance
+    c) Reducing memory usage
+    d) Faster execution
+    Answer: a) Building complex operations from simple ones
+
+25. How do you create a function that always returns the same value?
+    a) Use Function.constant()
+    b) Use lambda: x -> constantValue
+    c) Use Supplier: () -> constantValue
+    d) Both b and c
+    Answer: d) Both b and c
+
+====================================================================

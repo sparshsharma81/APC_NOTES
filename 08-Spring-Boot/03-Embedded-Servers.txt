@@ -1,0 +1,795 @@
+====================================================================
+                        SPRING BOOT EMBEDDED SERVERS
+====================================================================
+
+INTRODUCTION:
+Spring Boot includes embedded servers (Tomcat, Jetty, Undertow) that allow you to run web applications as standalone JAR files without requiring external server deployment. This approach simplifies deployment, improves portability, and enables microservices architecture. The embedded server is configured automatically but can be customized extensively.
+
+KEY CONCEPTS:
+
+1. EMBEDDED SERVER TYPES:
+   - Tomcat: Default embedded server in Spring Boot
+   - Jetty: Lightweight alternative with NIO support
+   - Undertow: High-performance server with low memory footprint
+   - Netty: For reactive applications with WebFlux
+
+2. SERVER CONFIGURATION:
+   - Port and context path configuration
+   - SSL/HTTPS setup
+   - Compression settings
+   - Connection pool configuration
+   - Session management
+
+3. SERVLET CONTAINER CUSTOMIZATION:
+   - ServletWebServerFactory customization
+   - Connector configuration
+   - Error pages and handling
+   - Servlet, Filter, and Listener registration
+
+4. DEPLOYMENT OPTIONS:
+   - Executable JAR deployment
+   - WAR file deployment
+   - Docker containerization
+   - Cloud platform deployment
+
+5. PERFORMANCE TUNING:
+   - Thread pool configuration
+   - Memory settings
+   - Connection timeouts
+   - Request processing optimization
+
+EXAMPLE CODE:
+
+// Basic Server Configuration (application.yml)
+/*
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+    session:
+      timeout: 30m
+      cookie:
+        name: JSESSIONID
+        max-age: 1800
+        secure: true
+        http-only: true
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+  http2:
+    enabled: true
+
+# Tomcat specific configuration
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 10
+    max-connections: 8192
+    connection-timeout: 20000
+    max-http-post-size: 2MB
+    uri-encoding: UTF-8
+    accesslog:
+      enabled: true
+      directory: logs
+      pattern: combined
+      file-date-format: .yyyy-MM-dd
+*/
+
+// Server Configuration Class
+@Configuration
+public class ServerConfiguration {
+    
+    // Tomcat Server Factory Customization
+    @Bean
+    public WebServerFactoryCustomizer<TomcatServletWebServerFactory> tomcatCustomizer() {
+        return factory -> {
+            // Configure connector
+            factory.addConnectorCustomizers(connector -> {
+                if (connector.getProtocolHandler() instanceof Http11NioProtocol) {
+                    Http11NioProtocol protocol = (Http11NioProtocol) connector.getProtocolHandler();
+                    protocol.setMaxThreads(200);
+                    protocol.setMinSpareThreads(20);
+                    protocol.setConnectionTimeout(20000);
+                    protocol.setKeepAliveTimeout(30000);
+                    protocol.setMaxKeepAliveRequests(100);
+                }
+            });
+            
+            // Configure context
+            factory.addContextCustomizers(context -> {
+                context.setSessionTimeout(30); // 30 minutes
+                context.addWelcomeFile("index.html");
+                
+                // Add security constraints
+                SecurityConstraint securityConstraint = new SecurityConstraint();
+                securityConstraint.setUserConstraint("CONFIDENTIAL");
+                SecurityCollection collection = new SecurityCollection();
+                collection.addPattern("/*");
+                securityConstraint.addCollection(collection);
+                context.addConstraint(securityConstraint);
+            });
+        };
+    }
+    
+    // Multiple Connectors (HTTP and HTTPS)
+    @Bean
+    public WebServerFactoryCustomizer<TomcatServletWebServerFactory> multiConnectorCustomizer() {
+        return factory -> {
+            // Add HTTP connector
+            Connector httpConnector = new Connector(TomcatServletWebServerFactory.DEFAULT_PROTOCOL);
+            httpConnector.setScheme("http");
+            httpConnector.setPort(8080);
+            httpConnector.setSecure(false);
+            httpConnector.setRedirectPort(8443);
+            
+            factory.addAdditionalTomcatConnectors(httpConnector);
+        };
+    }
+}
+
+// SSL Configuration
+@Configuration
+@ConfigurationProperties(prefix = "server.ssl")
+public class SSLConfiguration {
+    
+    private boolean enabled = false;
+    private String keyStore;
+    private String keyStorePassword;
+    private String keyStoreType = "PKCS12";
+    private String keyAlias;
+    private String[] ciphers;
+    private String[] protocols;
+    
+    @Bean
+    @ConditionalOnProperty(name = "server.ssl.enabled", havingValue = "true")
+    public ServletWebServerFactory servletContainer() {
+        TomcatServletWebServerFactory tomcat = new TomcatServletWebServerFactory() {
+            @Override
+            protected void postProcessContext(Context context) {
+                SecurityConstraint securityConstraint = new SecurityConstraint();
+                securityConstraint.setUserConstraint("CONFIDENTIAL");
+                SecurityCollection collection = new SecurityCollection();
+                collection.addPattern("/*");
+                securityConstraint.addCollection(collection);
+                context.addConstraint(securityConstraint);
+            }
+        };
+        
+        // Force HTTP to redirect to HTTPS
+        tomcat.addAdditionalTomcatConnectors(createHttpConnector());
+        return tomcat;
+    }
+    
+    private Connector createHttpConnector() {
+        Connector connector = new Connector(TomcatServletWebServerFactory.DEFAULT_PROTOCOL);
+        connector.setScheme("http");
+        connector.setPort(8080);
+        connector.setSecure(false);
+        connector.setRedirectPort(8443);
+        return connector;
+    }
+    
+    // Getters and setters...
+}
+
+// Jetty Server Configuration
+@Configuration
+@ConditionalOnClass(Server.class)
+public class JettyConfiguration {
+    
+    @Bean
+    public WebServerFactoryCustomizer<JettyServletWebServerFactory> jettyCustomizer() {
+        return factory -> {
+            factory.addServerCustomizers(server -> {
+                // Configure thread pool
+                QueuedThreadPool threadPool = new QueuedThreadPool();
+                threadPool.setMaxThreads(200);
+                threadPool.setMinThreads(20);
+                threadPool.setIdleTimeout(60000);
+                server.setThreadPool(threadPool);
+                
+                // Configure connectors
+                for (Connector connector : server.getConnectors()) {
+                    if (connector instanceof ServerConnector) {
+                        ServerConnector serverConnector = (ServerConnector) connector;
+                        serverConnector.setIdleTimeout(30000);
+                        serverConnector.setAcceptQueueSize(128);
+                    }
+                }
+            });
+            
+            // Configure handlers
+            factory.addContextCustomizers(context -> {
+                context.setMaxFormContentSize(2 * 1024 * 1024); // 2MB
+                context.setMaxFormKeys(1000);
+            });
+        };
+    }
+}
+
+// Undertow Server Configuration
+@Configuration
+@ConditionalOnClass(Undertow.class)
+public class UndertowConfiguration {
+    
+    @Bean
+    public WebServerFactoryCustomizer<UndertowServletWebServerFactory> undertowCustomizer() {
+        return factory -> {
+            factory.addBuilderCustomizers(builder -> {
+                builder.setServerOption(UndertowOptions.ENABLE_HTTP2, true)
+                       .setServerOption(UndertowOptions.HTTP2_SETTINGS_ENABLE_PUSH, true)
+                       .setWorkerOption(Options.WORKER_IO_THREADS, 8)
+                       .setWorkerOption(Options.WORKER_TASK_CORE_THREADS, 64)
+                       .setWorkerOption(Options.WORKER_TASK_MAX_THREADS, 64)
+                       .setSocketOption(Options.BACKLOG, 1024)
+                       .setSocketOption(Options.SO_REUSEADDR, true)
+                       .setSocketOption(Options.TCP_NODELAY, true);
+            });
+            
+            factory.addDeploymentInfoCustomizers(deploymentInfo -> {
+                deploymentInfo.setDefaultSessionTimeout(30 * 60) // 30 minutes
+                             .setInvalidateSessionOnLogout(true)
+                             .setSessionPersistenceManager(new InMemorySessionPersistence());
+            });
+        };
+    }
+}
+
+// Custom Error Pages
+@Component
+public class CustomErrorPageRegistrar implements ErrorPageRegistrar {
+    
+    @Override
+    public void registerErrorPages(ErrorPageRegistry registry) {
+        ErrorPage error404Page = new ErrorPage(HttpStatus.NOT_FOUND, "/error/404");
+        ErrorPage error500Page = new ErrorPage(HttpStatus.INTERNAL_SERVER_ERROR, "/error/500");
+        ErrorPage errorPage = new ErrorPage("/error");
+        
+        registry.addErrorPages(error404Page, error500Page, errorPage);
+    }
+}
+
+// Servlet, Filter, and Listener Registration
+@Configuration
+public class ServletConfiguration {
+    
+    // Register custom servlet
+    @Bean
+    public ServletRegistrationBean<HttpServlet> customServlet() {
+        ServletRegistrationBean<HttpServlet> registration = 
+            new ServletRegistrationBean<>(new CustomServlet(), "/custom/*");
+        registration.setName("customServlet");
+        registration.setLoadOnStartup(1);
+        registration.addInitParameter("param1", "value1");
+        return registration;
+    }
+    
+    // Register custom filter
+    @Bean
+    public FilterRegistrationBean<Filter> loggingFilter() {
+        FilterRegistrationBean<Filter> registration = 
+            new FilterRegistrationBean<>(new LoggingFilter());
+        registration.addUrlPatterns("/api/*");
+        registration.setName("loggingFilter");
+        registration.setOrder(1);
+        return registration;
+    }
+    
+    // Register custom listener
+    @Bean
+    public ServletListenerRegistrationBean<ServletContextListener> contextListener() {
+        return new ServletListenerRegistrationBean<>(new CustomContextListener());
+    }
+}
+
+// Custom Servlet Example
+public class CustomServlet extends HttpServlet {
+    
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) 
+            throws ServletException, IOException {
+        resp.setContentType("application/json");
+        resp.setCharacterEncoding("UTF-8");
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Custom servlet response");
+        response.put("timestamp", System.currentTimeMillis());
+        response.put("path", req.getRequestURI());
+        
+        ObjectMapper mapper = new ObjectMapper();
+        resp.getWriter().write(mapper.writeValueAsString(response));
+    }
+}
+
+// Custom Filter Example
+public class LoggingFilter implements Filter {
+    
+    private static final Logger logger = LoggerFactory.getLogger(LoggingFilter.class);
+    
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, 
+                        FilterChain chain) throws IOException, ServletException {
+        
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        HttpServletResponse httpResponse = (HttpServletResponse) response;
+        
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            long duration = System.currentTimeMillis() - startTime;
+            logger.info("Request: {} {} - Status: {} - Duration: {}ms",
+                       httpRequest.getMethod(),
+                       httpRequest.getRequestURI(),
+                       httpResponse.getStatus(),
+                       duration);
+        }
+    }
+}
+
+// Server Information and Management
+@RestController
+@RequestMapping("/server")
+public class ServerInfoController {
+    
+    @Autowired
+    private Environment environment;
+    
+    @Autowired(required = false)
+    private WebServer webServer;
+    
+    @GetMapping("/info")
+    public ResponseEntity<Map<String, Object>> getServerInfo() {
+        Map<String, Object> info = new HashMap<>();
+        
+        // Server information
+        if (webServer != null) {
+            info.put("port", webServer.getPort());
+            info.put("serverType", webServer.getClass().getSimpleName());
+        }
+        
+        // Environment information
+        info.put("profiles", environment.getActiveProfiles());
+        info.put("contextPath", environment.getProperty("server.servlet.context-path", "/"));
+        
+        // JVM information
+        Runtime runtime = Runtime.getRuntime();
+        Map<String, Object> jvm = new HashMap<>();
+        jvm.put("maxMemory", runtime.maxMemory());
+        jvm.put("totalMemory", runtime.totalMemory());
+        jvm.put("freeMemory", runtime.freeMemory());
+        jvm.put("processors", runtime.availableProcessors());
+        info.put("jvm", jvm);
+        
+        // System properties
+        Map<String, String> systemProps = new HashMap<>();
+        systemProps.put("javaVersion", System.getProperty("java.version"));
+        systemProps.put("osName", System.getProperty("os.name"));
+        systemProps.put("osVersion", System.getProperty("os.version"));
+        info.put("system", systemProps);
+        
+        return ResponseEntity.ok(info);
+    }
+    
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> getServerHealth() {
+        Map<String, Object> health = new HashMap<>();
+        
+        // Check server status
+        boolean isHealthy = true;
+        
+        // Memory check
+        Runtime runtime = Runtime.getRuntime();
+        long usedMemory = runtime.totalMemory() - runtime.freeMemory();
+        long maxMemory = runtime.maxMemory();
+        double memoryUsage = (double) usedMemory / maxMemory;
+        
+        if (memoryUsage > 0.9) {
+            isHealthy = false;
+            health.put("memoryWarning", "Memory usage above 90%");
+        }
+        
+        health.put("status", isHealthy ? "UP" : "DOWN");
+        health.put("memoryUsage", String.format("%.2f%%", memoryUsage * 100));
+        health.put("timestamp", LocalDateTime.now());
+        
+        return ResponseEntity.ok(health);
+    }
+}
+
+// Configuration Properties for Multiple Environments
+@ConfigurationProperties(prefix = "app.server")
+@Component
+public class ServerProperties {
+    
+    private int port = 8080;
+    private String contextPath = "/";
+    private boolean sslEnabled = false;
+    private Compression compression = new Compression();
+    private Session session = new Session();
+    
+    public static class Compression {
+        private boolean enabled = true;
+        private String[] mimeTypes = {"text/html", "text/css", "application/javascript", "application/json"};
+        private int minResponseSize = 1024;
+        
+        // Getters and setters...
+    }
+    
+    public static class Session {
+        private Duration timeout = Duration.ofMinutes(30);
+        private String cookieName = "JSESSIONID";
+        private boolean cookieSecure = false;
+        private boolean cookieHttpOnly = true;
+        
+        // Getters and setters...
+    }
+    
+    // Getters and setters...
+}
+
+// Graceful Shutdown Configuration
+@Configuration
+public class GracefulShutdownConfig {
+    
+    @Bean
+    public GracefulShutdown gracefulShutdown() {
+        return new GracefulShutdown();
+    }
+    
+    @Bean
+    public WebServerFactoryCustomizer<TomcatServletWebServerFactory> gracefulShutdownCustomizer() {
+        return factory -> factory.addConnectorCustomizers(gracefulShutdown());
+    }
+    
+    static class GracefulShutdown implements TomcatConnectorCustomizer, 
+                                           ApplicationListener<ContextClosedEvent> {
+        
+        private static final Logger logger = LoggerFactory.getLogger(GracefulShutdown.class);
+        private volatile Connector connector;
+        
+        @Override
+        public void customize(Connector connector) {
+            this.connector = connector;
+        }
+        
+        @Override
+        public void onApplicationEvent(ContextClosedEvent event) {
+            if (connector != null) {
+                connector.pause();
+                Executor executor = connector.getProtocolHandler().getExecutor();
+                if (executor instanceof ThreadPoolExecutor) {
+                    try {
+                        ThreadPoolExecutor threadPoolExecutor = (ThreadPoolExecutor) executor;
+                        threadPoolExecutor.shutdown();
+                        if (!threadPoolExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                            logger.warn("Tomcat thread pool did not shut down gracefully within 30 seconds. Proceeding with forceful shutdown");
+                            threadPoolExecutor.shutdownNow();
+                        }
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Docker Configuration
+/*
+# Dockerfile
+FROM openjdk:11-jre-slim
+
+VOLUME /tmp
+
+ARG JAR_FILE=target/myapp.jar
+COPY ${JAR_FILE} app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/app.jar"]
+
+# docker-compose.yml
+version: '3.8'
+services:
+  myapp:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - SERVER_PORT=8080
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+*/
+
+// Cloud Configuration (application-cloud.yml)
+/*
+server:
+  port: ${PORT:8080}
+  servlet:
+    context-path: ${CONTEXT_PATH:/}
+  
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    root: INFO
+    com.example: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+*/
+
+// Testing Embedded Server Configuration
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+public class EmbeddedServerTest {
+    
+    @Autowired
+    private TestRestTemplate restTemplate;
+    
+    @LocalServerPort
+    private int port;
+    
+    @Test
+    public void testServerIsRunning() {
+        ResponseEntity<String> response = restTemplate.getForEntity(
+            "http://localhost:" + port + "/actuator/health", String.class);
+        
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().contains("UP"));
+    }
+    
+    @Test
+    public void testCustomEndpoint() {
+        ResponseEntity<Map> response = restTemplate.getForEntity(
+            "http://localhost:" + port + "/server/info", Map.class);
+        
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().containsKey("port"));
+        assertEquals(port, response.getBody().get("port"));
+    }
+    
+    @Test
+    public void testSSLConfiguration() {
+        // Test SSL redirect if enabled
+        // This would require additional SSL test configuration
+    }
+}
+
+// Performance Testing
+@Component
+public class ServerPerformanceMonitor {
+    
+    private final MeterRegistry meterRegistry;
+    private final Timer requestTimer;
+    private final Counter requestCounter;
+    private final Gauge activeConnections;
+    
+    public ServerPerformanceMonitor(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+        this.requestTimer = Timer.builder("http.server.requests")
+            .description("HTTP request duration")
+            .register(meterRegistry);
+        this.requestCounter = Counter.builder("http.server.requests.total")
+            .description("Total HTTP requests")
+            .register(meterRegistry);
+        this.activeConnections = Gauge.builder("http.server.connections.active")
+            .description("Active HTTP connections")
+            .register(meterRegistry, this, ServerPerformanceMonitor::getActiveConnections);
+    }
+    
+    public void recordRequest(long duration, String method, String uri, int status) {
+        requestTimer.record(duration, TimeUnit.MILLISECONDS);
+        requestCounter.increment(
+            Tags.of(
+                "method", method,
+                "uri", uri,
+                "status", String.valueOf(status)
+            )
+        );
+    }
+    
+    private double getActiveConnections() {
+        // Implementation to get active connections from server
+        // This would depend on the specific embedded server being used
+        return 0;
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What is the default embedded server in Spring Boot?
+   a) Jetty
+   b) Tomcat
+   c) Undertow
+   d) Netty
+   Answer: b) Tomcat
+
+2. How do you change the default server port?
+   a) server.port
+   b) spring.server.port
+   c) application.port
+   d) web.server.port
+   Answer: a) server.port
+
+3. Which property sets the application context path?
+   a) server.context-path
+   b) server.servlet.context-path
+   c) spring.context-path
+   d) application.context-path
+   Answer: b) server.servlet.context-path
+
+4. How do you switch from Tomcat to Jetty?
+   a) Exclude Tomcat and include Jetty dependencies
+   b) Set server.type=jetty
+   c) Configure server.embedded.jetty=true
+   d) Use @EnableJetty annotation
+   Answer: a) Exclude Tomcat and include Jetty dependencies
+
+5. Which class is used to customize Tomcat server?
+   a) TomcatServerCustomizer
+   b) TomcatServletWebServerFactory
+   c) TomcatEmbeddedServerFactory
+   d) TomcatConfigurationCustomizer
+   Answer: b) TomcatServletWebServerFactory
+
+6. How do you enable HTTPS in Spring Boot?
+   a) server.ssl.enabled=true
+   b) server.https.enabled=true
+   c) spring.ssl.enabled=true
+   d) security.ssl.enabled=true
+   Answer: a) server.ssl.enabled=true
+
+7. What property configures SSL keystore location?
+   a) server.ssl.keystore
+   b) server.ssl.key-store
+   c) ssl.keystore.location
+   d) spring.ssl.keystore
+   Answer: b) server.ssl.key-store
+
+8. How do you configure maximum number of threads in Tomcat?
+   a) server.tomcat.max-threads
+   b) server.tomcat.threads.max
+   c) tomcat.max-threads
+   d) server.max-threads
+   Answer: b) server.tomcat.threads.max
+
+9. Which interface is used to register error pages?
+   a) ErrorPageRegistry
+   b) ErrorPageRegistrar
+   c) ErrorPageConfiguration
+   d) ErrorPageCustomizer
+   Answer: b) ErrorPageRegistrar
+
+10. How do you register a custom servlet?
+    a) Use ServletRegistrationBean
+    b) Use @Servlet annotation
+    c) Configure in web.xml
+    d) Use ServletConfiguration
+    Answer: a) Use ServletRegistrationBean
+
+11. What is the purpose of WebServerFactoryCustomizer?
+    a) Creates web servers
+    b) Customizes embedded server configuration
+    c) Manages server lifecycle
+    d) Configures server security
+    Answer: b) Customizes embedded server configuration
+
+12. How do you enable HTTP/2 support?
+    a) server.http2.enabled=true
+    b) server.protocol.http2=true
+    c) spring.http2.enabled=true
+    d) web.http2.enabled=true
+    Answer: a) server.http2.enabled=true
+
+13. Which property enables response compression?
+    a) server.compression.enabled
+    b) server.compress=true
+    c) spring.compression.enabled
+    d) web.compression.enabled
+    Answer: a) server.compression.enabled
+
+14. How do you configure session timeout?
+    a) server.session.timeout
+    b) server.servlet.session.timeout
+    c) spring.session.timeout
+    d) session.timeout
+    Answer: b) server.servlet.session.timeout
+
+15. What is the purpose of @ConditionalOnClass in server configuration?
+    a) Checks class existence
+    b) Conditionally loads configuration based on classpath
+    c) Validates class structure
+    d) Creates conditional classes
+    Answer: b) Conditionally loads configuration based on classpath
+
+16. How do you create multiple connectors in Tomcat?
+    a) Use addAdditionalTomcatConnectors()
+    b) Configure multiple server.port values
+    c) Use @MultipleConnectors
+    d) Set server.tomcat.connectors
+    Answer: a) Use addAdditionalTomcatConnectors()
+
+17. Which property sets maximum POST request size?
+    a) server.max-http-post-size
+    b) server.tomcat.max-http-post-size
+    c) spring.servlet.max-post-size
+    d) web.max-post-size
+    Answer: b) server.tomcat.max-http-post-size
+
+18. How do you enable access logging in Tomcat?
+    a) server.tomcat.accesslog.enabled=true
+    b) server.access-log.enabled=true
+    c) logging.tomcat.access=true
+    d) server.tomcat.logging.enabled=true
+    Answer: a) server.tomcat.accesslog.enabled=true
+
+19. What does graceful shutdown do?
+    a) Shuts down server immediately
+    b) Completes existing requests before shutdown
+    c) Saves server state before shutdown
+    d) Restarts server gracefully
+    Answer: b) Completes existing requests before shutdown
+
+20. How do you configure Undertow worker threads?
+    a) server.undertow.worker-threads
+    b) server.undertow.threads.worker
+    c) undertow.worker-threads
+    d) server.undertow.worker.threads
+    Answer: b) server.undertow.threads.worker
+
+21. Which annotation creates a servlet component?
+    a) @WebServlet
+    b) @Servlet
+    c) @ServletComponent
+    d) @Component with ServletRegistrationBean
+    Answer: d) @Component with ServletRegistrationBean
+
+22. How do you customize Jetty server?
+    a) Use JettyServletWebServerFactory
+    b) Use JettyServerCustomizer
+    c) Configure jetty.xml
+    d) Use @JettyConfiguration
+    Answer: a) Use JettyServletWebServerFactory
+
+23. What property sets URI encoding for Tomcat?
+    a) server.tomcat.uri-encoding
+    b) server.uri-encoding
+    c) tomcat.uri-encoding
+    d) server.tomcat.encoding
+    Answer: a) server.tomcat.uri-encoding
+
+24. How do you disable embedded server completely?
+    a) spring.main.web-application-type=none
+    b) server.enabled=false
+    c) spring.boot.web.server.enabled=false
+    d) web.server.enabled=false
+    Answer: a) spring.main.web-application-type=none
+
+25. Which property configures connection timeout?
+    a) server.connection-timeout
+    b) server.tomcat.connection-timeout
+    c) server.timeout.connection
+    d) tomcat.connection-timeout
+    Answer: b) server.tomcat.connection-timeout
+
+====================================================================

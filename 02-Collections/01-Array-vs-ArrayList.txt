@@ -1,0 +1,276 @@
+====================================================================
+                    JAVA COLLECTIONS: ARRAY VS ARRAYLIST
+====================================================================
+
+INTRODUCTION:
+Arrays and ArrayLists are both used to store multiple elements, but they have significant differences in terms of functionality, performance, and usage. Understanding these differences is crucial for choosing the right data structure.
+
+KEY CONCEPTS:
+
+1. ARRAYS:
+   - Fixed size collection of elements
+   - Elements stored in contiguous memory locations
+   - Can store primitives and objects
+   - Zero-based indexing
+   - Direct memory access (faster)
+
+2. ARRAYLIST:
+   - Dynamic resizable array implementation
+   - Part of Collections Framework
+   - Can only store objects (autoboxing for primitives)
+   - Implements List interface
+   - Automatic memory management
+
+3. ARRAY CHARACTERISTICS:
+   - Size is fixed at creation time
+   - Type-safe at compile time
+   - No built-in methods for manipulation
+   - Memory efficient
+   - Faster access and iteration
+
+4. ARRAYLIST CHARACTERISTICS:
+   - Dynamic sizing (grows and shrinks)
+   - Rich set of methods (add, remove, contains, etc.)
+   - Type safety with generics
+   - Automatic boxing/unboxing
+   - Slightly slower due to object overhead
+
+5. WHEN TO USE WHICH:
+   - Arrays: Fixed size, primitives, performance critical, memory constrained
+   - ArrayList: Dynamic size, frequent additions/deletions, rich functionality
+
+EXAMPLE CODE:
+
+// Array declaration and initialization
+int[] numbers = new int[5];           // Fixed size
+int[] values = {1, 2, 3, 4, 5};      // Array literal
+
+// Array operations
+numbers[0] = 10;                      // Assignment
+int first = numbers[0];               // Access
+int length = numbers.length;          // Size
+
+// ArrayList declaration and initialization
+ArrayList<Integer> list = new ArrayList<>();
+ArrayList<String> names = new ArrayList<>(Arrays.asList("John", "Jane"));
+
+// ArrayList operations
+list.add(10);                         // Add element
+list.add(0, 5);                      // Add at index
+list.remove(0);                       // Remove by index
+list.remove(Integer.valueOf(10));     // Remove by value
+boolean contains = list.contains(5);  // Check existence
+int size = list.size();               // Get size
+
+// Converting between array and ArrayList
+String[] array = {"A", "B", "C"};
+List<String> listFromArray = Arrays.asList(array);
+String[] arrayFromList = list.toArray(new String[0]);
+
+// Iteration
+// Array iteration
+for (int i = 0; i < numbers.length; i++) {
+    System.out.println(numbers[i]);
+}
+
+// Enhanced for loop
+for (int num : numbers) {
+    System.out.println(num);
+}
+
+// ArrayList iteration
+for (int i = 0; i < list.size(); i++) {
+    System.out.println(list.get(i));
+}
+
+// Enhanced for loop
+for (Integer num : list) {
+    System.out.println(num);
+}
+
+// Iterator
+Iterator<Integer> it = list.iterator();
+while (it.hasNext()) {
+    System.out.println(it.next());
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What is the main difference between Array and ArrayList?
+   a) Arrays are objects, ArrayLists are primitives
+   b) Arrays have fixed size, ArrayLists are dynamic
+   c) No difference
+   d) Arrays are slower than ArrayLists
+   Answer: b) Arrays have fixed size, ArrayLists are dynamic
+
+2. Can arrays store primitive data types?
+   a) Yes
+   b) No
+   c) Only integers
+   d) Only with wrapper classes
+   Answer: a) Yes
+
+3. Can ArrayList store primitive data types directly?
+   a) Yes
+   b) No, only through autoboxing
+   c) Only integers
+   d) Only strings
+   Answer: b) No, only through autoboxing
+
+4. How do you get the size of an array?
+   a) array.size()
+   b) array.length()
+   c) array.length
+   d) array.getSize()
+   Answer: c) array.length
+
+5. How do you get the size of an ArrayList?
+   a) list.length
+   b) list.length()
+   c) list.size()
+   d) list.getSize()
+   Answer: c) list.size()
+
+6. Which is more memory efficient?
+   a) Array
+   b) ArrayList
+   c) Both are same
+   d) Depends on data type
+   Answer: a) Array
+
+7. Which provides faster element access?
+   a) Array
+   b) ArrayList
+   c) Both are same
+   d) Depends on size
+   Answer: a) Array
+
+8. Can you change the size of an array after creation?
+   a) Yes, using resize() method
+   b) No, size is fixed
+   c) Yes, using extend() method
+   d) Only increase, not decrease
+   Answer: b) No, size is fixed
+
+9. Which method adds an element to ArrayList?
+   a) insert()
+   b) add()
+   c) put()
+   d) append()
+   Answer: b) add()
+
+10. What happens when ArrayList capacity is exceeded?
+    a) Exception is thrown
+    b) Automatically resizes (usually 1.5x)
+    c) Oldest element is removed
+    d) New elements are ignored
+    Answer: b) Automatically resizes (usually 1.5x)
+
+11. Which interface does ArrayList implement?
+    a) Collection
+    b) List
+    c) Set
+    d) Map
+    Answer: b) List
+
+12. How do you convert ArrayList to array?
+    a) toArray() method
+    b) convert() method
+    c) asArray() method
+    d) getArray() method
+    Answer: a) toArray() method
+
+13. How do you convert array to ArrayList?
+    a) Arrays.asList()
+    b) ArrayList.fromArray()
+    c) Array.toList()
+    d) new ArrayList(array)
+    Answer: a) Arrays.asList()
+
+14. Which allows null values?
+    a) Only arrays
+    b) Only ArrayList
+    c) Both
+    d) Neither
+    Answer: c) Both
+
+15. What is the index of first element in both array and ArrayList?
+    a) 1
+    b) 0
+    c) -1
+    d) Depends on implementation
+    Answer: b) 0
+
+16. Which supports generics for type safety?
+    a) Only arrays
+    b) Only ArrayList
+    c) Both
+    d) Neither
+    Answer: b) Only ArrayList
+
+17. How do you remove an element from ArrayList by index?
+    a) delete(index)
+    b) remove(index)
+    c) removeAt(index)
+    d) erase(index)
+    Answer: b) remove(index)
+
+18. Which is better for frequent insertions and deletions?
+    a) Array
+    b) ArrayList
+    c) Both are same
+    d) Neither
+    Answer: b) ArrayList
+
+19. What is the default initial capacity of ArrayList?
+    a) 5
+    b) 10
+    c) 16
+    d) 32
+    Answer: b) 10
+
+20. Which method checks if ArrayList contains an element?
+    a) has()
+    b) contains()
+    c) exists()
+    d) find()
+    Answer: b) contains()
+
+21. Can you create multidimensional ArrayList directly?
+    a) Yes, like ArrayList<Integer>[][]
+    b) No, must use ArrayList<ArrayList<Integer>>
+    c) Yes, using special syntax
+    d) Only 2D arrays
+    Answer: b) No, must use ArrayList<ArrayList<Integer>>
+
+22. What happens when you access invalid index in array?
+    a) Returns null
+    b) Returns 0
+    c) ArrayIndexOutOfBoundsException
+    d) Compilation error
+    Answer: c) ArrayIndexOutOfBoundsException
+
+23. What happens when you access invalid index in ArrayList?
+    a) Returns null
+    b) IndexOutOfBoundsException
+    c) Returns 0
+    d) Compilation error
+    Answer: b) IndexOutOfBoundsException
+
+24. Which can be used in enhanced for loop?
+    a) Only arrays
+    b) Only ArrayList
+    c) Both
+    d) Neither
+    Answer: c) Both
+
+25. Which is synchronized by default?
+    a) Array
+    b) ArrayList
+    c) Both
+    d) Neither
+    Answer: d) Neither
+
+====================================================================

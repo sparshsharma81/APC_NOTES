@@ -1,0 +1,770 @@
+====================================================================
+                        DATABASE ACCESS WITH JDBC
+====================================================================
+
+INTRODUCTION:
+Java Database Connectivity (JDBC) is a Java API that defines how a client may access a database. It provides methods for querying and updating data in a database and is oriented towards relational databases. JDBC is part of the Java Standard Edition platform.
+
+KEY CONCEPTS:
+
+1. JDBC ARCHITECTURE:
+   - JDBC API: Application-to-JDBC Manager connection
+   - JDBC Driver Manager: Manages list of database drivers
+   - JDBC Driver: Database-specific implementation
+   - Database: The actual data storage
+
+2. JDBC DRIVERS TYPES:
+   - Type 1: JDBC-ODBC Bridge Driver
+   - Type 2: Native API Driver (Partially Java Driver)
+   - Type 3: Network Protocol Driver (Pure Java Driver)
+   - Type 4: Database Protocol Driver (Pure Java Driver)
+
+3. CORE JDBC CLASSES:
+   - DriverManager: Manages database drivers
+   - Connection: Represents database connection
+   - Statement: Executes SQL statements
+   - PreparedStatement: Pre-compiled SQL statements
+   - CallableStatement: Executes stored procedures
+   - ResultSet: Represents query results
+
+4. CONNECTION MANAGEMENT:
+   - Connection URL format: jdbc:subprotocol:subname
+   - Connection properties (username, password)
+   - Connection pooling for performance
+   - Transaction management
+
+5. SQL EXECUTION TYPES:
+   - executeQuery(): For SELECT statements
+   - executeUpdate(): For INSERT, UPDATE, DELETE
+   - execute(): For any SQL statement
+   - executeBatch(): For batch operations
+
+EXAMPLE CODE:
+
+import java.sql.*;
+import java.util.*;
+import java.math.BigDecimal;
+
+// Basic JDBC Connection Example
+public class JDBCBasicExample {
+    
+    private static final String URL = "jdbc:mysql://localhost:3306/testdb";
+    private static final String USERNAME = "root";
+    private static final String PASSWORD = "password";
+    
+    public static void main(String[] args) {
+        try {
+            // Load the driver (optional for JDBC 4.0+)
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            
+            // Establish connection
+            Connection connection = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+            
+            System.out.println("Connected to database successfully!");
+            
+            // Close connection
+            connection.close();
+            
+        } catch (ClassNotFoundException e) {
+            System.err.println("JDBC Driver not found: " + e.getMessage());
+        } catch (SQLException e) {
+            System.err.println("Database connection failed: " + e.getMessage());
+        }
+    }
+}
+
+// CRUD Operations Example
+public class JDBCCRUDOperations {
+    
+    private static final String URL = "jdbc:mysql://localhost:3306/testdb";
+    private static final String USERNAME = "root";
+    private static final String PASSWORD = "password";
+    
+    // Create table
+    public static void createTable() {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS employees (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                name VARCHAR(100) NOT NULL,
+                email VARCHAR(100) UNIQUE,
+                salary DECIMAL(10,2),
+                department VARCHAR(50),
+                hire_date DATE
+            )
+            """;
+        
+        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+             Statement stmt = conn.createStatement()) {
+            
+            stmt.executeUpdate(sql);
+            System.out.println("Table created successfully!");
+            
+        } catch (SQLException e) {
+            System.err.println("Error creating table: " + e.getMessage());
+        }
+    }
+    
+    // Insert operation
+    public static void insertEmployee(String name, String email, double salary, String department) {
+        String sql = "INSERT INTO employees (name, email, salary, department, hire_date) VALUES (?, ?, ?, ?, ?)";
+        
+        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, name);
+            pstmt.setString(2, email);
+            pstmt.setDouble(3, salary);
+            pstmt.setString(4, department);
+            pstmt.setDate(5, new Date(System.currentTimeMillis()));
+            
+            int rowsAffected = pstmt.executeUpdate();
+            System.out.println(rowsAffected + " row(s) inserted!");
+            
+        } catch (SQLException e) {
+            System.err.println("Error inserting employee: " + e.getMessage());
+        }
+    }
+    
+    // Select operation
+    public static void getAllEmployees() {
+        String sql = "SELECT * FROM employees ORDER BY id";
+        
+        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            
+            System.out.println("\n=== All Employees ===");
+            System.out.printf("%-5s %-20s %-25s %-10s %-15s %-12s%n", 
+                "ID", "Name", "Email", "Salary", "Department", "Hire Date");
+            System.out.println("-".repeat(90));
+            
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String name = rs.getString("name");
+                String email = rs.getString("email");
+                double salary = rs.getDouble("salary");
+                String department = rs.getString("department");
+                Date hireDate = rs.getDate("hire_date");
+                
+                System.out.printf("%-5d %-20s %-25s %-10.2f %-15s %-12s%n",
+                    id, name, email, salary, department, hireDate);
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("Error retrieving employees: " + e.getMessage());
+        }
+    }
+    
+    // Update operation
+    public static void updateEmployeeSalary(int employeeId, double newSalary) {
+        String sql = "UPDATE employees SET salary = ? WHERE id = ?";
+        
+        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setDouble(1, newSalary);
+            pstmt.setInt(2, employeeId);
+            
+            int rowsAffected = pstmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Employee salary updated successfully!");
+            } else {
+                System.out.println("Employee not found!");
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("Error updating employee: " + e.getMessage());
+        }
+    }
+    
+    // Delete operation
+    public static void deleteEmployee(int employeeId) {
+        String sql = "DELETE FROM employees WHERE id = ?";
+        
+        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, employeeId);
+            
+            int rowsAffected = pstmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Employee deleted successfully!");
+            } else {
+                System.out.println("Employee not found!");
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("Error deleting employee: " + e.getMessage());
+        }
+    }
+    
+    public static void main(String[] args) {
+        createTable();
+        
+        // Insert some employees
+        insertEmployee("John Doe", "john.doe@company.com", 75000.0, "Engineering");
+        insertEmployee("Jane Smith", "jane.smith@company.com", 65000.0, "Marketing");
+        insertEmployee("Bob Johnson", "bob.johnson@company.com", 80000.0, "Engineering");
+        
+        // Display all employees
+        getAllEmployees();
+        
+        // Update an employee's salary
+        updateEmployeeSalary(1, 85000.0);
+        
+        // Display updated data
+        getAllEmployees();
+        
+        // Delete an employee
+        deleteEmployee(2);
+        
+        // Display final data
+        getAllEmployees();
+    }
+}
+
+// Transaction Management Example
+public class JDBCTransactionExample {
+    
+    private static final String URL = "jdbc:mysql://localhost:3306/testdb";
+    private static final String USERNAME = "root";
+    private static final String PASSWORD = "password";
+    
+    public static void transferMoney(int fromAccountId, int toAccountId, double amount) {
+        Connection conn = null;
+        
+        try {
+            conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+            
+            // Start transaction
+            conn.setAutoCommit(false);
+            
+            // Debit from source account
+            String debitSQL = "UPDATE accounts SET balance = balance - ? WHERE id = ? AND balance >= ?";
+            PreparedStatement debitStmt = conn.prepareStatement(debitSQL);
+            debitStmt.setDouble(1, amount);
+            debitStmt.setInt(2, fromAccountId);
+            debitStmt.setDouble(3, amount);
+            
+            int debitRows = debitStmt.executeUpdate();
+            if (debitRows == 0) {
+                throw new SQLException("Insufficient balance or account not found");
+            }
+            
+            // Credit to destination account
+            String creditSQL = "UPDATE accounts SET balance = balance + ? WHERE id = ?";
+            PreparedStatement creditStmt = conn.prepareStatement(creditSQL);
+            creditStmt.setDouble(1, amount);
+            creditStmt.setInt(2, toAccountId);
+            
+            int creditRows = creditStmt.executeUpdate();
+            if (creditRows == 0) {
+                throw new SQLException("Destination account not found");
+            }
+            
+            // Insert transaction log
+            String logSQL = "INSERT INTO transaction_log (from_account, to_account, amount, transaction_date) VALUES (?, ?, ?, ?)";
+            PreparedStatement logStmt = conn.prepareStatement(logSQL);
+            logStmt.setInt(1, fromAccountId);
+            logStmt.setInt(2, toAccountId);
+            logStmt.setDouble(3, amount);
+            logStmt.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
+            
+            logStmt.executeUpdate();
+            
+            // Commit transaction
+            conn.commit();
+            System.out.println("Money transfer completed successfully!");
+            
+        } catch (SQLException e) {
+            try {
+                if (conn != null) {
+                    conn.rollback();
+                    System.err.println("Transaction rolled back due to: " + e.getMessage());
+                }
+            } catch (SQLException rollbackEx) {
+                System.err.println("Error during rollback: " + rollbackEx.getMessage());
+            }
+        } finally {
+            try {
+                if (conn != null) {
+                    conn.setAutoCommit(true);  // Restore auto-commit
+                    conn.close();
+                }
+            } catch (SQLException e) {
+                System.err.println("Error closing connection: " + e.getMessage());
+            }
+        }
+    }
+}
+
+// Batch Processing Example
+public class JDBCBatchProcessingExample {
+    
+    private static final String URL = "jdbc:mysql://localhost:3306/testdb";
+    private static final String USERNAME = "root";
+    private static final String PASSWORD = "password";
+    
+    public static void insertEmployeesBatch(List<Employee> employees) {
+        String sql = "INSERT INTO employees (name, email, salary, department, hire_date) VALUES (?, ?, ?, ?, ?)";
+        
+        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            conn.setAutoCommit(false);  // For better batch performance
+            
+            for (Employee emp : employees) {
+                pstmt.setString(1, emp.getName());
+                pstmt.setString(2, emp.getEmail());
+                pstmt.setDouble(3, emp.getSalary());
+                pstmt.setString(4, emp.getDepartment());
+                pstmt.setDate(5, new Date(emp.getHireDate().getTime()));
+                
+                pstmt.addBatch();
+            }
+            
+            int[] results = pstmt.executeBatch();
+            conn.commit();
+            
+            System.out.println("Batch insert completed. Rows affected: " + results.length);
+            
+        } catch (SQLException e) {
+            System.err.println("Batch processing failed: " + e.getMessage());
+        }
+    }
+    
+    // Employee class for batch processing
+    static class Employee {
+        private String name, email, department;
+        private double salary;
+        private java.util.Date hireDate;
+        
+        public Employee(String name, String email, double salary, String department) {
+            this.name = name;
+            this.email = email;
+            this.salary = salary;
+            this.department = department;
+            this.hireDate = new java.util.Date();
+        }
+        
+        // Getters
+        public String getName() { return name; }
+        public String getEmail() { return email; }
+        public double getSalary() { return salary; }
+        public String getDepartment() { return department; }
+        public java.util.Date getHireDate() { return hireDate; }
+    }
+    
+    public static void main(String[] args) {
+        List<Employee> employees = Arrays.asList(
+            new Employee("Alice Brown", "alice.brown@company.com", 70000.0, "HR"),
+            new Employee("Charlie Wilson", "charlie.wilson@company.com", 75000.0, "Finance"),
+            new Employee("Diana Prince", "diana.prince@company.com", 90000.0, "Engineering"),
+            new Employee("Eve Adams", "eve.adams@company.com", 65000.0, "Marketing"),
+            new Employee("Frank Miller", "frank.miller@company.com", 85000.0, "Engineering")
+        );
+        
+        insertEmployeesBatch(employees);
+    }
+}
+
+// Connection Pool Example (Basic Implementation)
+public class JDBCConnectionPool {
+    
+    private static final int INITIAL_POOL_SIZE = 5;
+    private static final int MAX_POOL_SIZE = 20;
+    private static final String URL = "jdbc:mysql://localhost:3306/testdb";
+    private static final String USERNAME = "root";
+    private static final String PASSWORD = "password";
+    
+    private static Queue<Connection> connectionPool = new LinkedList<>();
+    private static int currentPoolSize = 0;
+    
+    static {
+        initializePool();
+    }
+    
+    private static void initializePool() {
+        for (int i = 0; i < INITIAL_POOL_SIZE; i++) {
+            try {
+                Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+                connectionPool.offer(conn);
+                currentPoolSize++;
+            } catch (SQLException e) {
+                System.err.println("Error initializing connection pool: " + e.getMessage());
+            }
+        }
+    }
+    
+    public static synchronized Connection getConnection() throws SQLException {
+        if (connectionPool.isEmpty() && currentPoolSize < MAX_POOL_SIZE) {
+            Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+            currentPoolSize++;
+            return conn;
+        }
+        
+        if (connectionPool.isEmpty()) {
+            throw new SQLException("Maximum pool size reached. No connections available.");
+        }
+        
+        return connectionPool.poll();
+    }
+    
+    public static synchronized void releaseConnection(Connection connection) {
+        if (connection != null && connectionPool.size() < MAX_POOL_SIZE) {
+            connectionPool.offer(connection);
+        } else {
+            try {
+                if (connection != null) {
+                    connection.close();
+                    currentPoolSize--;
+                }
+            } catch (SQLException e) {
+                System.err.println("Error closing connection: " + e.getMessage());
+            }
+        }
+    }
+    
+    public static void closeAllConnections() {
+        while (!connectionPool.isEmpty()) {
+            try {
+                Connection conn = connectionPool.poll();
+                conn.close();
+                currentPoolSize--;
+            } catch (SQLException e) {
+                System.err.println("Error closing pooled connection: " + e.getMessage());
+            }
+        }
+    }
+    
+    // Example usage
+    public static void exampleUsage() {
+        Connection conn = null;
+        try {
+            conn = getConnection();
+            
+            // Use connection for database operations
+            String sql = "SELECT COUNT(*) FROM employees";
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(sql)) {
+                
+                if (rs.next()) {
+                    System.out.println("Total employees: " + rs.getInt(1));
+                }
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("Database operation failed: " + e.getMessage());
+        } finally {
+            releaseConnection(conn);  // Always return connection to pool
+        }
+    }
+}
+
+// ResultSet Navigation and Data Types Example
+public class JDBCResultSetExample {
+    
+    private static final String URL = "jdbc:mysql://localhost:3306/testdb";
+    private static final String USERNAME = "root";
+    private static final String PASSWORD = "password";
+    
+    public static void demonstrateResultSetOperations() {
+        String sql = "SELECT id, name, email, salary, department, hire_date FROM employees";
+        
+        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+             Statement stmt = conn.createStatement(
+                 ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                 ResultSet.CONCUR_READ_ONLY);
+             ResultSet rs = stmt.executeQuery(sql)) {
+            
+            // Move to first row
+            if (rs.first()) {
+                System.out.println("First employee: " + rs.getString("name"));
+            }
+            
+            // Move to last row
+            if (rs.last()) {
+                System.out.println("Last employee: " + rs.getString("name"));
+                System.out.println("Total rows: " + rs.getRow());
+            }
+            
+            // Navigate backwards
+            System.out.println("\nEmployees (reverse order):");
+            while (rs.previous()) {
+                displayEmployeeInfo(rs);
+            }
+            
+            // Move to specific row
+            if (rs.absolute(2)) {
+                System.out.println("\nSecond employee:");
+                displayEmployeeInfo(rs);
+            }
+            
+            // Demonstrate different data type retrievals
+            rs.first();
+            demonstrateDataTypes(rs);
+            
+        } catch (SQLException e) {
+            System.err.println("ResultSet operation failed: " + e.getMessage());
+        }
+    }
+    
+    private static void displayEmployeeInfo(ResultSet rs) throws SQLException {
+        System.out.printf("ID: %d, Name: %s, Salary: %.2f%n",
+            rs.getInt("id"),
+            rs.getString("name"),
+            rs.getDouble("salary"));
+    }
+    
+    private static void demonstrateDataTypes(ResultSet rs) throws SQLException {
+        System.out.println("\n=== Data Type Demonstrations ===");
+        
+        // Different ways to retrieve data
+        int id = rs.getInt(1);  // By column index
+        String name = rs.getString("name");  // By column name
+        
+        // Handle null values
+        double salary = rs.getDouble("salary");
+        boolean wasNull = rs.wasNull();
+        
+        // Date handling
+        Date hireDate = rs.getDate("hire_date");
+        Timestamp hireTimestamp = rs.getTimestamp("hire_date");
+        
+        // BigDecimal for precise decimal values
+        BigDecimal salaryPrecise = rs.getBigDecimal("salary");
+        
+        System.out.println("ID: " + id);
+        System.out.println("Name: " + name);
+        System.out.println("Salary: " + (wasNull ? "NULL" : salary));
+        System.out.println("Hire Date: " + hireDate);
+        System.out.println("Hire Timestamp: " + hireTimestamp);
+        System.out.println("Salary (BigDecimal): " + salaryPrecise);
+    }
+}
+
+// DatabaseMetaData Example
+public class JDBCMetaDataExample {
+    
+    private static final String URL = "jdbc:mysql://localhost:3306/testdb";
+    private static final String USERNAME = "root";
+    private static final String PASSWORD = "password";
+    
+    public static void displayDatabaseInfo() {
+        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD)) {
+            
+            DatabaseMetaData metaData = conn.getMetaData();
+            
+            System.out.println("=== Database Information ===");
+            System.out.println("Database Product: " + metaData.getDatabaseProductName());
+            System.out.println("Database Version: " + metaData.getDatabaseProductVersion());
+            System.out.println("Driver Name: " + metaData.getDriverName());
+            System.out.println("Driver Version: " + metaData.getDriverVersion());
+            System.out.println("JDBC Version: " + metaData.getJDBCMajorVersion() + "." + metaData.getJDBCMinorVersion());
+            
+            // List all tables
+            System.out.println("\n=== Tables ===");
+            ResultSet tables = metaData.getTables(null, null, "%", new String[]{"TABLE"});
+            while (tables.next()) {
+                System.out.println("Table: " + tables.getString("TABLE_NAME"));
+            }
+            
+            // Get information about specific table
+            System.out.println("\n=== Employees Table Columns ===");
+            ResultSet columns = metaData.getColumns(null, null, "employees", "%");
+            while (columns.next()) {
+                String columnName = columns.getString("COLUMN_NAME");
+                String dataType = columns.getString("TYPE_NAME");
+                int columnSize = columns.getInt("COLUMN_SIZE");
+                String nullable = columns.getString("IS_NULLABLE");
+                
+                System.out.printf("Column: %s, Type: %s, Size: %d, Nullable: %s%n",
+                    columnName, dataType, columnSize, nullable);
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("Error retrieving metadata: " + e.getMessage());
+        }
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What does JDBC stand for?
+   a) Java Database Connection
+   b) Java Database Connectivity
+   c) Java Data Base Controller
+   d) Java Database Component
+   Answer: b) Java Database Connectivity
+
+2. Which JDBC driver type is pure Java?
+   a) Type 1
+   b) Type 2
+   c) Type 3 and Type 4
+   d) All types
+   Answer: c) Type 3 and Type 4
+
+3. Which class manages database drivers in JDBC?
+   a) Connection
+   b) Statement
+   c) DriverManager
+   d) ResultSet
+   Answer: c) DriverManager
+
+4. What method is used for SELECT queries?
+   a) executeUpdate()
+   b) executeQuery()
+   c) execute()
+   d) runQuery()
+   Answer: b) executeQuery()
+
+5. Which statement type is pre-compiled?
+   a) Statement
+   b) PreparedStatement
+   c) CallableStatement
+   d) DynamicStatement
+   Answer: b) PreparedStatement
+
+6. What does executeUpdate() return?
+   a) ResultSet
+   b) Number of affected rows
+   c) Boolean value
+   d) Connection object
+   Answer: b) Number of affected rows
+
+7. How do you start a transaction in JDBC?
+   a) conn.startTransaction()
+   b) conn.beginTransaction()
+   c) conn.setAutoCommit(false)
+   d) conn.transaction(true)
+   Answer: c) conn.setAutoCommit(false)
+
+8. Which method commits a transaction?
+   a) conn.commit()
+   b) conn.save()
+   c) conn.finish()
+   d) conn.end()
+   Answer: a) conn.commit()
+
+9. What happens if you don't close JDBC resources?
+   a) Nothing
+   b) Memory leaks
+   c) Database locks
+   d) Both b and c
+   Answer: d) Both b and c
+
+10. Which is the correct JDBC URL format?
+    a) jdbc:database:subname
+    b) jdbc:subprotocol:subname
+    c) database:jdbc:name
+    d) jdbc:driver:database
+    Answer: b) jdbc:subprotocol:subname
+
+11. What does CallableStatement execute?
+    a) Regular SQL queries
+    b) Stored procedures
+    c) Batch operations
+    d) Transactions
+    Answer: b) Stored procedures
+
+12. How do you handle null values in ResultSet?
+    a) Check rs.isNull()
+    b) Use rs.wasNull() after getting value
+    c) Compare with null
+    d) Use rs.checkNull()
+    Answer: b) Use rs.wasNull() after getting value
+
+13. What is batch processing in JDBC?
+    a) Processing multiple queries together
+    b) Processing large datasets
+    c) Executing queries in background
+    d) Parallel query execution
+    Answer: a) Processing multiple queries together
+
+14. Which ResultSet type allows scrolling?
+    a) TYPE_FORWARD_ONLY
+    b) TYPE_SCROLL_INSENSITIVE
+    c) TYPE_SCROLL_SENSITIVE
+    d) Both b and c
+    Answer: d) Both b and c
+
+15. What does rs.absolute(5) do?
+    a) Moves to 5th row from current
+    b) Moves to 5th row from beginning
+    c) Moves 5 positions forward
+    d) Sets absolute position to 5
+    Answer: b) Moves to 5th row from beginning
+
+16. How do you prevent SQL injection?
+    a) Use Statement
+    b) Use PreparedStatement with parameters
+    c) Validate input manually
+    d) Use escape characters
+    Answer: b) Use PreparedStatement with parameters
+
+17. What is connection pooling?
+    a) Creating multiple databases
+    b) Reusing database connections
+    c) Pooling query results
+    d) Grouping similar queries
+    Answer: b) Reusing database connections
+
+18. Which method adds SQL to batch?
+    a) addBatch()
+    b) setBatch()
+    c) batch()
+    d) addToBatch()
+    Answer: a) addBatch()
+
+19. What does executeBatch() return?
+    a) ResultSet
+    b) Array of affected row counts
+    c) Boolean array
+    d) List of results
+    Answer: b) Array of affected row counts
+
+20. How do you rollback a transaction?
+    a) conn.rollback()
+    b) conn.undo()
+    c) conn.cancel()
+    d) conn.revert()
+    Answer: a) conn.rollback()
+
+21. What interface represents query results?
+    a) QueryResult
+    b) DataSet
+    c) ResultSet
+    d) RecordSet
+    Answer: c) ResultSet
+
+22. Which method moves ResultSet cursor to next row?
+    a) next()
+    b) moveNext()
+    c) forward()
+    d) advance()
+    Answer: a) next()
+
+23. What does setAutoCommit(true) do?
+    a) Enables automatic commits
+    b) Starts transaction
+    c) Commits current transaction
+    d) Enables batch mode
+    Answer: a) Enables automatic commits
+
+24. How do you get database metadata?
+    a) conn.getMetaData()
+    b) conn.getDatabaseInfo()
+    c) conn.getInfo()
+    d) conn.metadata()
+    Answer: a) conn.getMetaData()
+
+25. What's the best practice for resource management in JDBC?
+    a) Manual closing in finally block
+    b) Try-with-resources statement
+    c) Garbage collector handles it
+    d) Connection pooling
+    Answer: b) Try-with-resources statement
+
+====================================================================

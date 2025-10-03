@@ -1,0 +1,206 @@
+====================================================================
+                        EXCEPTION HANDLING IN JAVA
+====================================================================
+
+INTRODUCTION:
+Exception handling is a mechanism to handle runtime errors that occur during program execution. It allows developers to write clean, 
+maintainable code that can gracefully handle unexpected situations.
+
+KEY CONCEPTS:
+
+1. EXCEPTION HIERARCHY:
+   - Throwable (Root class)
+     ├── Error (System-level errors, not handled by application)
+     └── Exception
+         ├── RuntimeException (Unchecked exceptions)
+         └── Checked Exceptions (Must be handled)
+
+2. TYPES OF EXCEPTIONS:
+   a) Checked Exceptions: Must be handled at compile time
+      - IOException, SQLException, ClassNotFoundException
+   
+   b) Unchecked Exceptions: Runtime exceptions
+      - NullPointerException, ArrayIndexOutOfBoundsException, IllegalArgumentException
+
+3. EXCEPTION HANDLING KEYWORDS:
+   - try: Block containing code that might throw exception
+   - catch: Block to handle specific exception
+   - finally: Block that always executes
+   - throw: Manually throw an exception
+   - throws: Declare exceptions that method might throw
+
+4. BEST PRACTICES:
+   - Use specific exception types
+   - Don't catch generic Exception unless necessary
+   - Always log exceptions
+   - Clean up resources in finally block or use try-with-resources
+
+EXAMPLE CODE:
+
+try {
+    int result = 10 / 0;
+} catch (ArithmeticException e) {
+    System.out.println("Division by zero: " + e.getMessage());
+} finally {
+    System.out.println("Cleanup code");
+}
+
+// Try-with-resources
+try (FileReader file = new FileReader("data.txt")) {
+    // File operations
+} catch (IOException e) {
+    e.printStackTrace();
+}
+
+CUSTOM EXCEPTIONS:
+class CustomException extends Exception {
+    public CustomException(String message) {
+        super(message);
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. Which of the following is the root class of exception hierarchy in Java?
+   a) Exception
+   b) RuntimeException
+   c) Throwable
+   d) Error
+   Answer: c) Throwable
+
+2. Which keyword is used to manually throw an exception?
+   a) throws
+   b) throw
+   c) try
+   d) catch
+   Answer: b) throw
+
+3. What happens if an exception is not caught in Java?
+   a) Program continues execution
+   b) Program terminates abnormally
+   c) Exception is ignored
+   d) Compilation error occurs
+   Answer: b) Program terminates abnormally
+
+4. Which of the following is a checked exception?
+   a) NullPointerException
+   b) ArrayIndexOutOfBoundsException
+   c) IOException
+   d) IllegalArgumentException
+   Answer: c) IOException
+
+5. What is the purpose of the finally block?
+   a) To catch exceptions
+   b) To throw exceptions
+   c) To execute code regardless of exception occurrence
+   d) To declare exceptions
+   Answer: c) To execute code regardless of exception occurrence
+
+6. Which exception is thrown when dividing by zero?
+   a) NumberFormatException
+   b) ArithmeticException
+   c) IllegalArgumentException
+   d) RuntimeException
+   Answer: b) ArithmeticException
+
+7. What is try-with-resources statement used for?
+   a) Handling multiple exceptions
+   b) Automatic resource management
+   c) Throwing custom exceptions
+   d) Creating exception hierarchy
+   Answer: b) Automatic resource management
+
+8. Which of the following can have multiple catch blocks?
+   a) try
+   b) finally
+   c) throw
+   d) throws
+   Answer: a) try
+
+9. What happens if both try and finally blocks have return statements?
+   a) Compilation error
+   b) try block's return is executed
+   c) finally block's return is executed
+   d) Runtime exception occurs
+   Answer: c) finally block's return is executed
+
+10. Which exception is thrown when accessing null reference?
+    a) NullPointerException
+    b) IllegalArgumentException
+    c) ClassCastException
+    d) NumberFormatException
+    Answer: a) NullPointerException
+
+11. What is the difference between throw and throws?
+    a) No difference
+    b) throw is used in method signature, throws inside method
+    c) throws is used in method signature, throw inside method
+    d) Both are used inside method
+    Answer: c) throws is used in method signature, throw inside method
+
+12. Which block is optional in exception handling?
+    a) try
+    b) catch
+    c) finally
+    d) Both b and c
+    Answer: d) Both b and c
+
+13. What is exception propagation?
+    a) Creating new exceptions
+    b) Passing exceptions up the call stack
+    c) Handling multiple exceptions
+    d) Converting exceptions
+    Answer: b) Passing exceptions up the call stack
+
+14. Which of the following is NOT an unchecked exception?
+    a) RuntimeException
+    b) NullPointerException
+    c) IOException
+    d) IllegalArgumentException
+    Answer: c) IOException
+
+15. What happens when an exception occurs in finally block?
+    a) It's ignored
+    b) It suppresses the original exception
+    c) Compilation error
+    d) Both exceptions are thrown
+    Answer: b) It suppresses the original exception
+
+16. Which keyword is used to create custom exceptions?
+    a) extends
+    b) implements
+    c) throws
+    d) catch
+    Answer: a) extends
+
+17. What is the order of execution in try-catch-finally?
+    a) try → finally → catch
+    b) try → catch → finally
+    c) catch → try → finally
+    d) finally → try → catch
+    Answer: b) try → catch → finally
+
+18. Which method is used to get the stack trace of an exception?
+    a) getMessage()
+    b) toString()
+    c) printStackTrace()
+    d) getCause()
+    Answer: c) printStackTrace()
+
+19. What is chained exception?
+    a) Multiple catch blocks
+    b) Exception caused by another exception
+    c) Custom exception hierarchy
+    d) Exception handling in loops
+    Answer: b) Exception caused by another exception
+
+20. Which of the following is true about Error class?
+    a) Should be caught by application
+    b) Represents recoverable conditions
+    c) Represents serious problems
+    d) Is a checked exception
+    Answer: c) Represents serious problems
+
+====================================================================

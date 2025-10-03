@@ -1,0 +1,212 @@
+====================================================================
+                            MODULES IN JAVA
+====================================================================
+
+INTRODUCTION:
+The Java Platform Module System (JPMS) was introduced in Java 9 to provide better encapsulation and modularity. Modules allow developers to explicitly declare dependencies and expose only the necessary APIs, improving security, maintainability, and performance.
+
+KEY CONCEPTS:
+
+1. MODULE DEFINITION:
+   - module-info.java file defines module
+   - Contains module declaration with dependencies
+   - Located at root of module source
+
+2. MODULE DECLARATIONS:
+   - module name: Unique identifier for module
+   - requires: Declares dependencies on other modules
+   - exports: Makes packages available to other modules
+   - opens: Opens packages for reflection
+   - provides/uses: Service provider mechanism
+
+3. MODULE TYPES:
+   - Named modules: Explicitly defined modules
+   - Automatic modules: JAR files on module path without module-info
+   - Unnamed module: Classpath-based code
+
+4. MODULE PATH vs CLASSPATH:
+   - Module path: New way to specify module location
+   - Classpath: Traditional way (still supported)
+   - Modules use module path, non-modular code uses classpath
+
+5. STRONG ENCAPSULATION:
+   - Internal packages are not accessible by default
+   - Only exported packages can be accessed
+   - Reflection access requires opens directive
+
+EXAMPLE CODE:
+
+// module-info.java
+module com.example.mymodule {
+    requires java.base;           // Implicit, not needed
+    requires java.logging;
+    requires transitive java.desktop;
+    
+    exports com.example.api;
+    exports com.example.util to com.example.client;
+    
+    opens com.example.internal to com.fasterxml.jackson.databind;
+    
+    provides com.example.spi.Service 
+        with com.example.impl.ServiceImpl;
+    uses com.example.spi.Service;
+}
+
+// Compiling modules
+javac --module-path mods -d mods/com.example.mymodule 
+      src/com.example.mymodule/module-info.java 
+      src/com.example.mymodule/com/example/api/*.java
+
+// Running modules
+java --module-path mods --module com.example.mymodule/com.example.Main
+
+MIGRATION STRATEGIES:
+1. Bottom-up: Start with leaf dependencies
+2. Top-down: Start with main application
+3. Gradual: Use automatic modules
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. In which Java version was the Module System introduced?
+   a) Java 8
+   b) Java 9
+   c) Java 10
+   d) Java 11
+   Answer: b) Java 9
+
+2. What is the name of the file that defines a module?
+   a) module.java
+   b) module-info.java
+   c) module-descriptor.java
+   d) module.properties
+   Answer: b) module-info.java
+
+3. Which keyword is used to declare module dependencies?
+   a) depends
+   b) imports
+   c) requires
+   d) needs
+   Answer: c) requires
+
+4. What does the 'exports' directive do?
+   a) Imports packages from other modules
+   b) Makes packages available to other modules
+   c) Exports module to file system
+   d) Creates module dependencies
+   Answer: b) Makes packages available to other modules
+
+5. What is strong encapsulation in modules?
+   a) Module encryption
+   b) Internal packages are not accessible by default
+   c) Strong typing system
+   d) Security framework
+   Answer: b) Internal packages are not accessible by default
+
+6. Which directive allows reflection access to packages?
+   a) exports
+   b) requires
+   c) opens
+   d) provides
+   Answer: c) opens
+
+7. What is an automatic module?
+   a) Self-loading module
+   b) JAR file on module path without module-info
+   c) Module created automatically
+   d) Built-in Java module
+   Answer: b) JAR file on module path without module-info
+
+8. What does 'requires transitive' mean?
+   a) Optional dependency
+   b) Dependency is passed to modules that depend on this module
+   c) Temporary dependency
+   d) Conditional dependency
+   Answer: b) Dependency is passed to modules that depend on this module
+
+9. Where should module-info.java be located?
+   a) In any package
+   b) In META-INF directory
+   c) At the root of module source
+   d) In main package
+   Answer: c) At the root of module source
+
+10. What is the unnamed module?
+    a) Module without name
+    b) Classpath-based code
+    c) Anonymous module
+    d) Default module
+    Answer: b) Classpath-based code
+
+11. Which command-line option specifies module path?
+    a) --classpath
+    b) --modulepath
+    c) --module-path
+    d) --modules
+    Answer: c) --module-path
+
+12. What does the 'uses' directive declare?
+    a) Module usage statistics
+    b) Service consumer
+    c) Module dependencies
+    d) Package usage
+    Answer: b) Service consumer
+
+13. What does the 'provides...with' directive do?
+    a) Provides dependencies
+    b) Service provider implementation
+    c) Conditional exports
+    d) Module provisioning
+    Answer: b) Service provider implementation
+
+14. Can a module access non-exported packages of another module?
+    a) Yes, always
+    b) No, never
+    c) Only with opens directive
+    d) Only with qualified exports
+    Answer: b) No, never
+
+15. What is a qualified export?
+    a) Export with conditions
+    b) Export to specific modules only
+    c) Export with qualifiers
+    d) Conditional package export
+    Answer: b) Export to specific modules only
+
+16. Which module is implicitly required by all modules?
+    a) java.lang
+    b) java.base
+    c) java.core
+    d) java.util
+    Answer: b) java.base
+
+17. What happens if circular dependencies exist between modules?
+    a) Runtime error
+    b) Compilation error
+    c) Warning message
+    d) Automatic resolution
+    Answer: b) Compilation error
+
+18. How do you run a modular application?
+    a) java --module modulename
+    b) java --module-path path --module modulename/mainclass
+    c) java -m modulename
+    d) java --run-module modulename
+    Answer: b) java --module-path path --module modulename/mainclass
+
+19. What is the benefit of strong encapsulation?
+    a) Better performance
+    b) Reduced memory usage
+    c) Better security and maintainability
+    d) Faster compilation
+    Answer: c) Better security and maintainability
+
+20. Can packages be split across multiple modules?
+    a) Yes, always
+    b) No, never
+    c) Only in automatic modules
+    d) Only with special permission
+    Answer: b) No, never
+
+====================================================================

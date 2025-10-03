@@ -1,0 +1,293 @@
+====================================================================
+                            MAP COLLECTION IN JAVA
+====================================================================
+
+INTRODUCTION:
+Map is an interface that represents a collection of key-value pairs. Each key is unique and maps to exactly one value. Maps are not part of the Collection interface hierarchy but are fundamental to Java Collections Framework.
+
+KEY CONCEPTS:
+
+1. MAP INTERFACE:
+   - Stores key-value pairs
+   - Keys must be unique
+   - Values can be duplicate
+   - Main implementations: HashMap, LinkedHashMap, TreeMap, Hashtable
+
+2. HASHMAP:
+   - Uses hash table for storage
+   - Best performance O(1) for basic operations
+   - No ordering guarantee
+   - Allows one null key and multiple null values
+   - Not synchronized
+
+3. LINKEDHASHMAP:
+   - Extends HashMap
+   - Maintains insertion or access order
+   - Slightly slower than HashMap
+   - Good for caching scenarios
+   - Access-order mode for LRU cache
+
+4. TREEMAP:
+   - Implements NavigableMap interface
+   - Sorted by keys (natural order or Comparator)
+   - O(log n) for basic operations
+   - Does not allow null keys
+   - Not synchronized
+
+5. HASHTABLE:
+   - Legacy implementation
+   - Synchronized (thread-safe)
+   - Does not allow null keys or values
+   - Generally slower than HashMap
+
+6. CONCURRENTHASHMAP:
+   - Thread-safe alternative to HashMap
+   - Better performance than Hashtable
+   - Segment-based locking
+   - Allows concurrent reads
+
+EXAMPLE CODE:
+
+// HashMap example
+Map<String, Integer> hashMap = new HashMap<>();
+hashMap.put("Alice", 25);
+hashMap.put("Bob", 30);
+hashMap.put("Charlie", 35);
+
+// Getting values
+Integer age = hashMap.get("Alice");  // 25
+Integer defaultAge = hashMap.getOrDefault("David", 0);  // 0
+
+// Checking operations
+boolean hasKey = hashMap.containsKey("Alice");
+boolean hasValue = hashMap.containsValue(25);
+
+// LinkedHashMap with access order
+Map<String, String> lruCache = new LinkedHashMap<String, String>(16, 0.75f, true) {
+    @Override
+    protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+        return size() > 3;  // Keep only 3 entries
+    }
+};
+
+// TreeMap example
+Map<String, Integer> treeMap = new TreeMap<>();
+treeMap.put("Zebra", 1);
+treeMap.put("Apple", 2);
+treeMap.put("Mango", 3);
+// Keys sorted: [Apple, Mango, Zebra]
+
+// TreeMap with custom comparator
+Map<String, Integer> reverseMap = new TreeMap<>((s1, s2) -> s2.compareTo(s1));
+
+// Iteration methods
+// 1. Using entrySet()
+for (Map.Entry<String, Integer> entry : hashMap.entrySet()) {
+    System.out.println(entry.getKey() + " = " + entry.getValue());
+}
+
+// 2. Using keySet()
+for (String key : hashMap.keySet()) {
+    System.out.println(key + " = " + hashMap.get(key));
+}
+
+// 3. Using values()
+for (Integer value : hashMap.values()) {
+    System.out.println(value);
+}
+
+// 4. Using forEach (Java 8+)
+hashMap.forEach((key, value) -> System.out.println(key + " = " + value));
+
+// Map operations (Java 8+)
+hashMap.putIfAbsent("David", 28);
+hashMap.replace("Alice", 25, 26);  // Replace if current value is 25
+hashMap.replaceAll((key, value) -> value + 1);  // Increment all values
+hashMap.compute("Eve", (key, value) -> (value == null) ? 1 : value + 1);
+hashMap.merge("Frank", 20, (oldVal, newVal) -> oldVal + newVal);
+
+// ConcurrentHashMap for thread safety
+Map<String, Integer> concurrentMap = new ConcurrentHashMap<>();
+concurrentMap.put("Thread1", 1);
+concurrentMap.put("Thread2", 2);
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What is the main characteristic of Map collection?
+   a) Stores only keys
+   b) Stores key-value pairs
+   c) Stores only values
+   d) Stores indexed elements
+   Answer: b) Stores key-value pairs
+
+2. Can Map have duplicate keys?
+   a) Yes, unlimited duplicates
+   b) Yes, but only two same keys
+   c) No, keys must be unique
+   d) Depends on implementation
+   Answer: c) No, keys must be unique
+
+3. Can Map have duplicate values?
+   a) Yes, values can be duplicate
+   b) No, values must be unique
+   c) Only in HashMap
+   d) Only in TreeMap
+   Answer: a) Yes, values can be duplicate
+
+4. Which Map implementation provides best performance?
+   a) HashMap
+   b) TreeMap
+   c) LinkedHashMap
+   d) Hashtable
+   Answer: a) HashMap
+
+5. Which Map implementation maintains insertion order?
+   a) HashMap
+   b) LinkedHashMap
+   c) TreeMap
+   d) Hashtable
+   Answer: b) LinkedHashMap
+
+6. Which Map implementation keeps entries sorted by keys?
+   a) HashMap
+   b) LinkedHashMap
+   c) TreeMap
+   d) All of them
+   Answer: c) TreeMap
+
+7. What is the time complexity of get() operation in HashMap?
+   a) O(1)
+   b) O(log n)
+   c) O(n)
+   d) O(n log n)
+   Answer: a) O(1)
+
+8. What is the time complexity of get() operation in TreeMap?
+   a) O(1)
+   b) O(log n)
+   c) O(n)
+   d) O(n²)
+   Answer: b) O(log n)
+
+9. Can HashMap have null keys?
+   a) Yes, multiple null keys
+   b) Yes, only one null key
+   c) No, null keys not allowed
+   d) Only null values
+   Answer: b) Yes, only one null key
+
+10. Can TreeMap have null keys?
+    a) Yes, multiple null keys
+    b) Yes, only one null key
+    c) No, null keys not allowed
+    d) Only with custom comparator
+    Answer: c) No, null keys not allowed
+
+11. Which Map implementation is synchronized?
+    a) HashMap
+    b) LinkedHashMap
+    c) TreeMap
+    d) Hashtable
+    Answer: d) Hashtable
+
+12. What happens when you put a duplicate key in Map?
+    a) Exception is thrown
+    b) New entry is added
+    c) Old value is replaced
+    d) Both values are stored
+    Answer: c) Old value is replaced
+
+13. Which method returns value for a key or default if key doesn't exist?
+    a) get()
+    b) getOrDefault()
+    c) getValue()
+    d) getDefault()
+    Answer: b) getOrDefault()
+
+14. How do you iterate over all key-value pairs in Map?
+    a) Using keySet()
+    b) Using values()
+    c) Using entrySet()
+    d) Using iterator()
+    Answer: c) Using entrySet()
+
+15. What does putIfAbsent() method do?
+    a) Always puts the value
+    b) Puts value only if key doesn't exist
+    c) Puts value only if key exists
+    d) Puts value if it's not null
+    Answer: b) Puts value only if key doesn't exist
+
+16. Which interface does TreeMap implement?
+    a) Map
+    b) SortedMap
+    c) NavigableMap
+    d) All of the above
+    Answer: d) All of the above
+
+17. What is the load factor in HashMap?
+    a) Number of elements
+    b) Ratio of elements to capacity
+    c) Hash collision rate
+    d) Memory usage ratio
+    Answer: b) Ratio of elements to capacity
+
+18. Which method removes all mappings from Map?
+    a) removeAll()
+    b) clear()
+    c) delete()
+    d) empty()
+    Answer: b) clear()
+
+19. What does compute() method do in Map?
+    a) Computes hash value
+    b) Computes new value based on key and current value
+    c) Computes map size
+    d) Computes memory usage
+    Answer: b) Computes new value based on key and current value
+
+20. Which is thread-safe Map implementation?
+    a) HashMap
+    b) ConcurrentHashMap
+    c) LinkedHashMap
+    d) TreeMap
+    Answer: b) ConcurrentHashMap
+
+21. What does merge() method do?
+    a) Merges two maps
+    b) Merges key with value
+    c) Merges old and new values using function
+    d) Merges all entries
+    Answer: c) Merges old and new values using function
+
+22. How can you make HashMap thread-safe?
+    a) Collections.synchronizedMap()
+    b) Use ConcurrentHashMap
+    c. Both a and b
+    d) Not possible
+    Answer: c) Both a and b
+
+23. What is the default initial capacity of HashMap?
+    a) 10
+    b) 16
+    c) 32
+    d) 8
+    Answer: b) 16
+
+24. Which method returns all keys in the Map?
+    a) keys()
+    b) keySet()
+    c) getKeys()
+    d) allKeys()
+    Answer: b) keySet()
+
+25. What happens in HashMap when load factor exceeds threshold?
+    a) Exception is thrown
+    b) No more elements can be added
+    c) HashMap is rehashed (resized)
+    d) Performance degrades
+    Answer: c) HashMap is rehashed (resized)
+
+====================================================================

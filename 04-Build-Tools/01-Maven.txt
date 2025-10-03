@@ -1,0 +1,377 @@
+====================================================================
+                            MAVEN BUILD TOOL
+====================================================================
+
+INTRODUCTION:
+Apache Maven is a build automation and project management tool primarily used for Java projects.
+ It uses XML-based Project Object Model (POM) to manage project dependencies, build lifecycle, and project information.
+
+KEY CONCEPTS:
+
+1. PROJECT OBJECT MODEL (POM):
+   - XML file (pom.xml) containing project information
+   - Defines project coordinates (groupId, artifactId, version)
+   - Manages dependencies and plugins
+   - Inherits from parent POMs
+
+2. MAVEN COORDINATES:
+   - groupId: Organization or group identifier
+   - artifactId: Project name/identifier
+   - version: Project version
+   - packaging: Output type (jar, war, pom, etc.)
+   - scope: Dependency scope (compile, test, runtime, etc.)
+
+3. DEPENDENCY MANAGEMENT:
+   - Automatic dependency resolution
+   - Transitive dependencies
+   - Version conflict resolution
+   - Central repository for artifacts
+
+4. BUILD LIFECYCLE:
+   - Default lifecycle: validate, compile, test, package, install, deploy
+   - Clean lifecycle: pre-clean, clean, post-clean
+   - Site lifecycle: pre-site, site, post-site, site-deploy
+
+5. DIRECTORY STRUCTURE:
+   - src/main/java: Source code
+   - src/main/resources: Resources
+   - src/test/java: Test code
+   - src/test/resources: Test resources
+   - target/: Build output
+
+6. REPOSITORIES:
+   - Local repository: ~/.m2/repository
+   - Central repository: Maven's central repo
+   - Remote repositories: Custom repositories
+
+EXAMPLE CODE:
+
+<!-- Basic pom.xml structure -->
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    
+    <modelVersion>4.0.0</modelVersion>
+    
+    <!-- Project coordinates -->
+    <groupId>com.example</groupId>
+    <artifactId>my-app</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    
+    <!-- Project information -->
+    <name>My Application</name>
+    <description>A sample Maven project</description>
+    
+    <!-- Properties -->
+    <properties>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <junit.version>5.8.2</junit.version>
+    </properties>
+    
+    <!-- Dependencies -->
+    <dependencies>
+        <!-- Compile scope (default) -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.12.0</version>
+        </dependency>
+        
+        <!-- Test scope -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- Provided scope -->
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>4.0.1</version>
+            <scope>provided</scope>
+        </dependency>
+        
+        <!-- Runtime scope -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.28</version>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
+    
+    <!-- Build configuration -->
+    <build>
+        <plugins>
+            <!-- Compiler plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.10.1</version>
+                <configuration>
+                    <source>11</source>
+                    <target>11</target>
+                </configuration>
+            </plugin>
+            
+            <!-- Surefire plugin for tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M7</version>
+            </plugin>
+            
+            <!-- JAR plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.2.2</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.example.Main</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+
+<!-- Parent POM example -->
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>2.7.0</version>
+    <relativePath/>
+</parent>
+
+<!-- Dependency Management -->
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+            <version>5.3.21</version>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+
+COMMON MAVEN COMMANDS:
+mvn clean                    # Clean build artifacts
+mvn compile                  # Compile source code
+mvn test                     # Run tests
+mvn package                  # Create JAR/WAR
+mvn install                  # Install to local repository
+mvn deploy                   # Deploy to remote repository
+mvn clean install           # Clean and install
+mvn dependency:tree         # Show dependency tree
+mvn help:effective-pom      # Show effective POM
+
+MAVEN PROFILES:
+<profiles>
+    <profile>
+        <id>development</id>
+        <properties>
+            <db.url>jdbc:h2:mem:testdb</db.url>
+        </properties>
+    </profile>
+    <profile>
+        <id>production</id>
+        <properties>
+            <db.url>jdbc:mysql://prod-server/db</db.url>
+        </properties>
+    </profile>
+</profiles>
+
+# Using profiles
+mvn clean install -Pdevelopment
+mvn clean install -Pproduction
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What does POM stand for in Maven?
+   a) Project Object Model
+   b) Project Organization Model
+   c) Project Outline Model
+   d) Project Operation Model
+   Answer: a) Project Object Model
+
+2. What is the default packaging type in Maven?
+   a) war
+   b) jar
+   c) ear
+   d) pom
+   Answer: b) jar
+
+3. Which file contains Maven project configuration?
+   a) build.xml
+   b) pom.xml
+   c) maven.xml
+   d) config.xml
+   Answer: b) pom.xml
+
+4. What are Maven coordinates?
+   a) GPS location of project
+   b) groupId, artifactId, version
+   c) x, y, z coordinates
+   d) Build coordinates
+   Answer: b) groupId, artifactId, version
+
+5. Which directory contains Java source code in Maven?
+   a) src/java
+   b) src/main/java
+   c) java/src
+   d) main/java
+   Answer: b) src/main/java
+
+6. What is the default scope for dependencies?
+   a) test
+   b) runtime
+   c) compile
+   d) provided
+   Answer: c) compile
+
+7. Which command compiles the source code?
+   a) mvn build
+   b) mvn compile
+   c) mvn make
+   d) mvn source
+   Answer: b) mvn compile
+
+8. Where is the local Maven repository located by default?
+   a) ~/.maven/repository
+   b) ~/.m2/repository
+   c) /usr/local/maven/repository
+   d) project/repository
+   Answer: b) ~/.m2/repository
+
+9. Which lifecycle phase runs unit tests?
+   a) compile
+   b) test
+   c) package
+   d) install
+   Answer: b) test
+
+10. What does 'mvn clean install' do?
+    a) Only cleans the project
+    b) Only installs dependencies
+    c) Cleans and then builds and installs to local repo
+    d) Installs Maven
+    Answer: c) Cleans and then builds and installs to local repo
+
+11. Which scope is used for dependencies needed only at runtime?
+    a) compile
+    b) runtime
+    c) test
+    d) provided
+    Answer: b) runtime
+
+12. What is transitive dependency?
+    a) Direct project dependency
+    b) Dependency of a dependency
+    c) Test dependency
+    d) Optional dependency
+    Answer: b) Dependency of a dependency
+
+13. Which command shows the dependency tree?
+    a) mvn dependency:list
+    b) mvn dependency:tree
+    c) mvn show:dependencies
+    d) mvn list:dependencies
+    Answer: b) mvn dependency:tree
+
+14. What is the purpose of provided scope?
+    a) Always include in classpath
+    b) Include only during compilation
+    c) Include only during testing
+    d) Available at runtime from container
+    Answer: d) Available at runtime from container
+
+15. Which directory contains test resources?
+    a) src/test/resources
+    b) src/main/test-resources
+    c) test/resources
+    d) src/resources/test
+    Answer: a) src/test/resources
+
+16. What does mvn package do?
+    a) Installs packages
+    b) Creates distributable format (JAR/WAR)
+    c) Downloads packages
+    d) Updates packages
+    Answer: b) Creates distributable format (JAR/WAR)
+
+17. Which element defines project version?
+    a) <version>
+    b) <projectVersion>
+    c) <versionNumber>
+    d) <release>
+    Answer: a) <version>
+
+18. What is Maven Central?
+    a) Maven's main office
+    b) Central configuration file
+    c) Default public repository
+    d) Central processing unit
+    Answer: c) Default public repository
+
+19. Which plugin is used for compilation?
+    a) maven-compile-plugin
+    b) maven-compiler-plugin
+    c) maven-build-plugin
+    d) maven-java-plugin
+    Answer: b) maven-compiler-plugin
+
+20. What does dependencyManagement section do?
+    a) Manages all dependencies
+    b) Defines dependency versions for child projects
+    c) Downloads dependencies
+    d) Removes dependencies
+    Answer: b) Defines dependency versions for child projects
+
+21. Which command skips tests during build?
+    a) mvn install -skipTests
+    b) mvn install -DskipTests
+    c) mvn install -noTests
+    d) mvn install -testSkip
+    Answer: b) mvn install -DskipTests
+
+22. What is a Maven profile?
+    a) User profile
+    b) Configuration variant for different environments
+    c) Project profile
+    d) Performance profile
+    Answer: b) Configuration variant for different environments
+
+23. Which lifecycle is used for cleaning build artifacts?
+    a) default
+    b) clean
+    c) site
+    d) deploy
+    Answer: b) clean
+
+24. What does mvn deploy do?
+    a) Deploys to production server
+    b) Copies artifacts to remote repository
+    c) Starts application
+    d) Deploys to local repository
+    Answer: b) Copies artifacts to remote repository
+
+25. Which scope excludes dependency from transitive resolution?
+    a) compile
+    b) provided
+    c) test
+    d) system
+    Answer: d) system
+
+====================================================================

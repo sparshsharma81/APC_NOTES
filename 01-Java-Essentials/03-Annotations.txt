@@ -1,0 +1,220 @@
+====================================================================
+                            ANNOTATIONS IN JAVA
+====================================================================
+
+INTRODUCTION:
+Annotations provide metadata about the program that is not part of the program itself. They have no direct effect on the operation of the code they annotate but can be used by the compiler, development tools, or at runtime through reflection.
+
+KEY CONCEPTS:
+
+1. BUILT-IN ANNOTATIONS:
+   - @Override: Indicates method overrides superclass method
+   - @Deprecated: Marks element as deprecated
+   - @SuppressWarnings: Suppresses compiler warnings
+   - @SafeVarargs: Suppresses unsafe varargs warnings
+   - @FunctionalInterface: Marks interface as functional interface
+
+2. META-ANNOTATIONS:
+   - @Retention: Specifies how long annotation is retained
+     * RetentionPolicy.SOURCE: Discarded by compiler
+     * RetentionPolicy.CLASS: Retained by compiler, not available at runtime
+     * RetentionPolicy.RUNTIME: Available at runtime via reflection
+   
+   - @Target: Specifies where annotation can be applied
+     * ElementType.TYPE, METHOD, FIELD, PARAMETER, etc.
+   
+   - @Inherited: Annotation is inherited by subclasses
+   - @Documented: Annotation should be documented
+   - @Repeatable: Annotation can be applied multiple times
+
+3. CUSTOM ANNOTATIONS:
+   public @interface MyAnnotation {
+       String value() default "";
+       int count() default 1;
+   }
+
+4. ANNOTATION PROCESSING:
+   - Compile-time processing
+   - Runtime processing using reflection
+   - Custom annotation processors
+
+EXAMPLE CODE:
+
+// Built-in annotations
+@Override
+public String toString() {
+    return "Example";
+}
+
+@Deprecated
+public void oldMethod() {
+    // Legacy code
+}
+
+@SuppressWarnings("unchecked")
+List list = new ArrayList();
+
+// Custom annotation
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface TestCase {
+    String description() default "";
+    int priority() default 1;
+}
+
+// Using custom annotation
+@TestCase(description = "Test login functionality", priority = 2)
+public void testLogin() {
+    // Test code
+}
+
+// Accessing annotation at runtime
+Method method = MyClass.class.getMethod("testLogin");
+TestCase annotation = method.getAnnotation(TestCase.class);
+System.out.println(annotation.description());
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What is the primary purpose of annotations in Java?
+   a) Execute code
+   b) Provide metadata
+   c) Handle exceptions
+   d) Manage memory
+   Answer: b) Provide metadata
+
+2. Which annotation indicates that a method overrides a superclass method?
+   a) @Overrides
+   b) @Override
+   c) @Overridden
+   d) @Super
+   Answer: b) @Override
+
+3. What does @Deprecated annotation indicate?
+   a) Method is abstract
+   b) Method is final
+   c) Method should not be used
+   d) Method is private
+   Answer: c) Method should not be used
+
+4. Which retention policy makes annotation available at runtime?
+   a) SOURCE
+   b) CLASS
+   c) RUNTIME
+   d) COMPILE
+   Answer: c) RUNTIME
+
+5. What is a meta-annotation?
+   a) Annotation on variables
+   b) Annotation on annotations
+   c) Built-in annotation
+   d) Custom annotation
+   Answer: b) Annotation on annotations
+
+6. Which annotation is used to suppress compiler warnings?
+   a) @Suppress
+   b) @SuppressWarnings
+   c) @NoWarning
+   d) @Warning
+   Answer: b) @SuppressWarnings
+
+7. What does @Target annotation specify?
+   a) Target audience
+   b) Target platform
+   c) Where annotation can be applied
+   d) Target method
+   Answer: c) Where annotation can be applied
+
+8. Which ElementType allows annotation on class declarations?
+   a) CLASS
+   b) TYPE
+   c) DECLARATION
+   d) ELEMENT
+   Answer: b) TYPE
+
+9. What is the default retention policy for annotations?
+   a) SOURCE
+   b) CLASS
+   c) RUNTIME
+   d) COMPILE
+   Answer: b) CLASS
+
+10. How do you access annotation information at runtime?
+    a) Direct access
+    b) Using reflection
+    c) Annotation API
+    d) Compiler tools
+    Answer: b) Using reflection
+
+11. Which annotation marks an interface as functional interface?
+    a) @Functional
+    b) @FunctionalInterface
+    c) @Lambda
+    d) @Interface
+    Answer: b) @FunctionalInterface
+
+12. What does @Inherited annotation do?
+    a) Prevents inheritance
+    b) Allows multiple inheritance
+    c) Annotation is inherited by subclasses
+    d) Creates inheritance hierarchy
+    Answer: c) Annotation is inherited by subclasses
+
+13. Which method is used to get annotation from a class element?
+    a) getAnnotation()
+    b) findAnnotation()
+    c) hasAnnotation()
+    d) annotation()
+    Answer: a) getAnnotation()
+
+14. What happens if you use @Override on a method that doesn't override?
+    a) Runtime error
+    b) Compilation error
+    c) Warning message
+    d) Nothing happens
+    Answer: b) Compilation error
+
+15. Which annotation allows the same annotation to be applied multiple times?
+    a) @Multiple
+    b) @Repeatable
+    c) @Repeat
+    d) @Duplicate
+    Answer: b) @Repeatable
+
+16. What is annotation processing?
+    a) Reading annotations at runtime
+    b) Processing annotations during compilation
+    c) Both a and b
+    d) Neither a nor b
+    Answer: c) Both a and b
+
+17. Which retention policy is used for compile-time checking?
+    a) SOURCE
+    b) CLASS
+    c) RUNTIME
+    d) All of the above
+    Answer: a) SOURCE
+
+18. What is the syntax for creating a custom annotation?
+    a) public annotation MyAnnotation
+    b) public @interface MyAnnotation
+    c) public interface @MyAnnotation
+    d) @public interface MyAnnotation
+    Answer: b) public @interface MyAnnotation
+
+19. Which annotation is used for unsafe varargs operations?
+    a) @SafeVarargs
+    b) @VarargsWarning
+    c) @UnsafeVarargs
+    d) @VarargsCheck
+    Answer: a) @SafeVarargs
+
+20. Can annotations have methods?
+    a) No, never
+    b) Yes, but they are called elements
+    c) Yes, regular methods only
+    d) Only static methods
+    Answer: b) Yes, but they are called elements
+
+====================================================================

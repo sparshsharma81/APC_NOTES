@@ -1,0 +1,690 @@
+====================================================================
+                    INVERSION OF CONTROL (IOC) AND DEPENDENCY INJECTION
+====================================================================
+
+INTRODUCTION:
+Inversion of Control (IoC) is a design principle where the control of object creation and management is transferred from the application code to a container. Dependency Injection (DI) is a specific implementation of IoC where dependencies are provided to an object rather than the object creating them itself. Spring's IoC container manages the complete lifecycle of beans and their dependencies.
+
+KEY CONCEPTS:
+
+1. INVERSION OF CONTROL (IOC):
+   - Objects don't create their dependencies
+   - Container manages object lifecycle
+   - Decouples object creation from business logic
+   - Promotes loose coupling and testability
+
+2. DEPENDENCY INJECTION TYPES:
+   - Constructor Injection: Dependencies through constructor
+   - Setter Injection: Dependencies through setter methods
+   - Field Injection: Direct field injection using @Autowired
+   - Method Injection: Dependencies through arbitrary methods
+
+3. SPRING IOC CONTAINER:
+   - BeanFactory: Basic container interface
+   - ApplicationContext: Advanced container with additional features
+   - Bean lifecycle management
+   - Dependency resolution and injection
+
+4. AUTOWIRING:
+   - @Autowired: Spring's primary injection annotation
+   - @Inject: JSR-330 standard annotation
+   - @Resource: JSR-250 annotation
+   - Qualifier annotations for disambiguation
+
+5. BEAN SCOPES AND LIFECYCLE:
+   - Singleton, Prototype, Request, Session scopes
+   - Initialization and destruction callbacks
+   - BeanPostProcessor for customization
+   - Lifecycle management hooks
+
+EXAMPLE CODE:
+
+import org.springframework.beans.factory.annotation.*;
+import org.springframework.context.annotation.*;
+import org.springframework.stereotype.*;
+import javax.annotation.*;
+
+// Traditional approach without IoC (tightly coupled)
+class OrderServiceWithoutIoC {
+    private EmailService emailService;
+    private PaymentService paymentService;
+    private InventoryService inventoryService;
+    
+    public OrderServiceWithoutIoC() {
+        // Tight coupling - OrderService creates its dependencies
+        this.emailService = new SmtpEmailService();
+        this.paymentService = new CreditCardPaymentService();
+        this.inventoryService = new DatabaseInventoryService();
+    }
+    
+    public void processOrder(Order order) {
+        // Business logic depends on concrete implementations
+        if (inventoryService.isAvailable(order.getProductId(), order.getQuantity())) {
+            paymentService.processPayment(order.getTotalAmount());
+            inventoryService.reserveItems(order.getProductId(), order.getQuantity());
+            emailService.sendOrderConfirmation(order);
+        }
+    }
+}
+
+// Spring IoC approach (loosely coupled)
+@Service
+public class OrderService {
+    
+    private final EmailService emailService;
+    private final PaymentService paymentService;
+    private final InventoryService inventoryService;
+    private final AuditService auditService;
+    
+    // Constructor Injection (Recommended approach)
+    public OrderService(EmailService emailService,
+                       PaymentService paymentService,
+                       InventoryService inventoryService,
+                       AuditService auditService) {
+        this.emailService = emailService;
+        this.paymentService = paymentService;
+        this.inventoryService = inventoryService;
+        this.auditService = auditService;
+    }
+    
+    public OrderResult processOrder(Order order) {
+        try {
+            // Validate order
+            if (!inventoryService.isAvailable(order.getProductId(), order.getQuantity())) {
+                return OrderResult.failed("Insufficient inventory");
+            }
+            
+            // Process payment
+            PaymentResult paymentResult = paymentService.processPayment(order.getTotalAmount());
+            if (!paymentResult.isSuccessful()) {
+                return OrderResult.failed("Payment failed: " + paymentResult.getErrorMessage());
+            }
+            
+            // Reserve inventory
+            inventoryService.reserveItems(order.getProductId(), order.getQuantity());
+            
+            // Send confirmation
+            emailService.sendOrderConfirmation(order);
+            
+            // Audit the transaction
+            auditService.logOrderProcessed(order);
+            
+            return OrderResult.success(order.getId());
+            
+        } catch (Exception e) {
+            auditService.logOrderError(order, e);
+            throw new OrderProcessingException("Failed to process order", e);
+        }
+    }
+}
+
+// Different Injection Types Examples
+
+// 1. Constructor Injection (Recommended)
+@Service
+public class UserServiceConstructorInjection {
+    
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final NotificationService notificationService;
+    
+    // All dependencies injected through constructor
+    public UserServiceConstructorInjection(UserRepository userRepository,
+                                         PasswordEncoder passwordEncoder,
+                                         NotificationService notificationService) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.notificationService = notificationService;
+    }
+    
+    public User createUser(String username, String password, String email) {
+        String encodedPassword = passwordEncoder.encode(password);
+        User user = new User(username, encodedPassword, email);
+        User savedUser = userRepository.save(user);
+        notificationService.sendWelcomeNotification(savedUser);
+        return savedUser;
+    }
+}
+
+// 2. Setter Injection
+@Service
+public class UserServiceSetterInjection {
+    
+    private UserRepository userRepository;
+    private PasswordEncoder passwordEncoder;
+    private NotificationService notificationService;
+    
+    // Setter injection methods
+    @Autowired
+    public void setUserRepository(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+    
+    @Autowired
+    public void setPasswordEncoder(PasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
+    }
+    
+    @Autowired
+    public void setNotificationService(NotificationService notificationService) {
+        this.notificationService = notificationService;
+    }
+    
+    public User createUser(String username, String password, String email) {
+        // Same business logic as constructor injection
+        String encodedPassword = passwordEncoder.encode(password);
+        User user = new User(username, encodedPassword, email);
+        User savedUser = userRepository.save(user);
+        notificationService.sendWelcomeNotification(savedUser);
+        return savedUser;
+    }
+}
+
+// 3. Field Injection (Not recommended for production)
+@Service
+public class UserServiceFieldInjection {
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+    
+    @Autowired
+    private NotificationService notificationService;
+    
+    public User createUser(String username, String password, String email) {
+        String encodedPassword = passwordEncoder.encode(password);
+        User user = new User(username, encodedPassword, email);
+        User savedUser = userRepository.save(user);
+        notificationService.sendWelcomeNotification(savedUser);
+        return savedUser;
+    }
+}
+
+// 4. Method Injection
+@Service
+public class UserServiceMethodInjection {
+    
+    private UserRepository userRepository;
+    private PasswordEncoder passwordEncoder;
+    private NotificationService notificationService;
+    
+    @Autowired
+    public void configureServices(UserRepository userRepository,
+                                PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+    
+    @Autowired
+    public void setNotificationService(NotificationService notificationService) {
+        this.notificationService = notificationService;
+    }
+    
+    public User createUser(String username, String password, String email) {
+        String encodedPassword = passwordEncoder.encode(password);
+        User user = new User(username, encodedPassword, email);
+        User savedUser = userRepository.save(user);
+        notificationService.sendWelcomeNotification(savedUser);
+        return savedUser;
+    }
+}
+
+// Qualifier and Primary Examples
+public interface NotificationService {
+    void sendNotification(String recipient, String message);
+}
+
+@Service
+@Primary  // This will be injected by default
+public class EmailNotificationService implements NotificationService {
+    @Override
+    public void sendNotification(String recipient, String message) {
+        System.out.println("Sending email to " + recipient + ": " + message);
+    }
+}
+
+@Service
+@Qualifier("sms")
+public class SmsNotificationService implements NotificationService {
+    @Override
+    public void sendNotification(String recipient, String message) {
+        System.out.println("Sending SMS to " + recipient + ": " + message);
+    }
+}
+
+@Service
+@Qualifier("push")
+public class PushNotificationService implements NotificationService {
+    @Override
+    public void sendNotification(String recipient, String message) {
+        System.out.println("Sending push notification to " + recipient + ": " + message);
+    }
+}
+
+// Using Qualifiers
+@Service
+public class NotificationManager {
+    
+    private final NotificationService emailService;
+    private final NotificationService smsService;
+    private final NotificationService pushService;
+    
+    public NotificationManager(@Qualifier("email") NotificationService emailService,
+                             @Qualifier("sms") NotificationService smsService,
+                             @Qualifier("push") NotificationService pushService) {
+        this.emailService = emailService;
+        this.smsService = smsService;
+        this.pushService = pushService;
+    }
+    
+    public void sendMultiChannelNotification(String recipient, String message) {
+        emailService.sendNotification(recipient, message);
+        smsService.sendNotification(recipient, message);
+        pushService.sendNotification(recipient, message);
+    }
+}
+
+// Bean Lifecycle Example
+@Component
+public class DatabaseConnectionManager {
+    
+    private Connection connection;
+    private final String url;
+    private final String username;
+    private final String password;
+    
+    public DatabaseConnectionManager(@Value("${db.url}") String url,
+                                   @Value("${db.username}") String username,
+                                   @Value("${db.password}") String password) {
+        this.url = url;
+        this.username = username;
+        this.password = password;
+    }
+    
+    @PostConstruct
+    public void initialize() {
+        try {
+            System.out.println("Initializing database connection...");
+            connection = DriverManager.getConnection(url, username, password);
+            System.out.println("Database connection established successfully");
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to establish database connection", e);
+        }
+    }
+    
+    @PreDestroy
+    public void cleanup() {
+        try {
+            if (connection != null && !connection.isClosed()) {
+                System.out.println("Closing database connection...");
+                connection.close();
+                System.out.println("Database connection closed successfully");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error closing database connection: " + e.getMessage());
+        }
+    }
+    
+    public Connection getConnection() {
+        return connection;
+    }
+}
+
+// Custom BeanPostProcessor Example
+@Component
+public class CustomBeanPostProcessor implements BeanPostProcessor {
+    
+    @Override
+    public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+        if (bean instanceof UserService) {
+            System.out.println("Before initialization of bean: " + beanName);
+            // Custom logic before initialization
+        }
+        return bean;
+    }
+    
+    @Override
+    public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+        if (bean instanceof UserService) {
+            System.out.println("After initialization of bean: " + beanName);
+            // Custom logic after initialization
+            // Could wrap bean in proxy, modify properties, etc.
+        }
+        return bean;
+    }
+}
+
+// Configuration for IoC Container
+@Configuration
+@ComponentScan(basePackages = "com.example")
+@PropertySource("classpath:application.properties")
+public class AppConfig {
+    
+    // Bean definition with dependencies
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+    
+    @Bean
+    public DataSource dataSource(@Value("${db.url}") String url,
+                               @Value("${db.username}") String username,
+                               @Value("${db.password}") String password) {
+        HikariDataSource dataSource = new HikariDataSource();
+        dataSource.setJdbcUrl(url);
+        dataSource.setUsername(username);
+        dataSource.setPassword(password);
+        return dataSource;
+    }
+    
+    @Bean
+    public UserRepository userRepository(DataSource dataSource) {
+        return new JdbcUserRepository(dataSource);
+    }
+    
+    // Conditional bean creation
+    @Bean
+    @ConditionalOnProperty(name = "notifications.email.enabled", havingValue = "true")
+    @Qualifier("email")
+    public NotificationService emailNotificationService() {
+        return new EmailNotificationService();
+    }
+}
+
+// Advanced Dependency Injection with Collections
+@Service
+public class NotificationAggregator {
+    
+    private final List<NotificationService> notificationServices;
+    private final Map<String, NotificationService> serviceMap;
+    
+    // Injecting all beans of a type
+    public NotificationAggregator(List<NotificationService> notificationServices,
+                                Map<String, NotificationService> serviceMap) {
+        this.notificationServices = notificationServices;
+        this.serviceMap = serviceMap;
+    }
+    
+    public void sendToAllChannels(String recipient, String message) {
+        notificationServices.forEach(service -> 
+            service.sendNotification(recipient, message));
+    }
+    
+    public void sendViaSpecificChannel(String channel, String recipient, String message) {
+        NotificationService service = serviceMap.get(channel);
+        if (service != null) {
+            service.sendNotification(recipient, message);
+        } else {
+            throw new IllegalArgumentException("Unknown notification channel: " + channel);
+        }
+    }
+}
+
+// Optional Dependencies
+@Service
+public class AnalyticsService {
+    
+    private final MetricsCollector metricsCollector;
+    private final Optional<CacheManager> cacheManager;
+    
+    public AnalyticsService(MetricsCollector metricsCollector,
+                          @Autowired(required = false) CacheManager cacheManager) {
+        this.metricsCollector = metricsCollector;
+        this.cacheManager = Optional.ofNullable(cacheManager);
+    }
+    
+    public void recordEvent(String eventType, Map<String, Object> properties) {
+        metricsCollector.record(eventType, properties);
+        
+        // Use cache if available
+        cacheManager.ifPresent(cache -> {
+            String key = "event:" + eventType;
+            cache.put(key, properties);
+        });
+    }
+}
+
+// Testing IoC and DI
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration(classes = AppConfig.class)
+public class IoCIntegrationTest {
+    
+    @Autowired
+    private OrderService orderService;
+    
+    @Autowired
+    private UserService userService;
+    
+    @MockBean
+    private PaymentService paymentService;
+    
+    @Test
+    public void testDependencyInjection() {
+        assertNotNull(orderService);
+        assertNotNull(userService);
+        
+        // Verify that mocked bean is injected
+        assertNotNull(paymentService);
+    }
+    
+    @Test
+    public void testOrderProcessing() {
+        // Arrange
+        Order order = new Order("PROD-001", 2, BigDecimal.valueOf(100.00));
+        when(paymentService.processPayment(any())).thenReturn(PaymentResult.success());
+        
+        // Act
+        OrderResult result = orderService.processOrder(order);
+        
+        // Assert
+        assertTrue(result.isSuccessful());
+        verify(paymentService).processPayment(order.getTotalAmount());
+    }
+}
+
+// Application Context Usage Example
+public class IoCSampleApplication {
+    
+    public static void main(String[] args) {
+        // Create IoC container
+        ApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
+        
+        // Get beans from container (dependencies already injected)
+        OrderService orderService = context.getBean(OrderService.class);
+        UserService userService = context.getBean(UserService.class);
+        
+        // Use the services
+        User user = userService.createUser("john_doe", "password123", "john@example.com");
+        System.out.println("Created user: " + user.getUsername());
+        
+        Order order = new Order("PROD-001", 1, BigDecimal.valueOf(99.99));
+        OrderResult result = orderService.processOrder(order);
+        System.out.println("Order result: " + result.isSuccessful());
+        
+        // Close context
+        ((ConfigurableApplicationContext) context).close();
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What is Inversion of Control (IoC)?
+   a) Controlling application flow
+   b) Transferring object creation control to a container
+   c) Reversing method calls
+   d) Controlling user input
+   Answer: b) Transferring object creation control to a container
+
+2. Which is the recommended dependency injection type in Spring?
+   a) Field injection
+   b) Setter injection
+   c) Constructor injection
+   d) Method injection
+   Answer: c) Constructor injection
+
+3. What annotation is used for dependency injection in Spring?
+   a) @Inject
+   b) @Autowired
+   c) @Resource
+   d) All of the above
+   Answer: d) All of the above
+
+4. What does @Primary annotation do?
+   a) Makes bean primary key
+   b) Indicates preferred bean when multiple candidates exist
+   c) Sets high priority
+   d) Creates primary instance
+   Answer: b) Indicates preferred bean when multiple candidates exist
+
+5. How do you inject a specific bean when multiple implementations exist?
+   a) @Qualifier
+   b) @Named
+   c) @Specific
+   d) @Select
+   Answer: a) @Qualifier
+
+6. What is the main advantage of constructor injection?
+   a) Faster execution
+   b) Immutable dependencies and fail-fast behavior
+   c) Less code
+   d) Better performance
+   Answer: b) Immutable dependencies and fail-fast behavior
+
+7. When is @PostConstruct called?
+   a) Before bean creation
+   b) After dependency injection is complete
+   c) Before dependency injection
+   d) During bean creation
+   Answer: b) After dependency injection is complete
+
+8. What does @PreDestroy do?
+   a) Destroys beans immediately
+   b) Marks method to be called before bean destruction
+   c) Prevents bean creation
+   d) Destroys dependencies
+   Answer: b) Marks method to be called before bean destruction
+
+9. What is BeanPostProcessor used for?
+   a) Processing bean definitions
+   b) Customizing bean initialization process
+   c) Creating new beans
+   d) Destroying beans
+   Answer: b) Customizing bean initialization process
+
+10. How do you make a dependency optional?
+    a) @Autowired(required = false)
+    b) @Optional
+    c) @Nullable
+    d) @NotRequired
+    Answer: a) @Autowired(required = false)
+
+11. What happens if Spring cannot find a bean to inject?
+    a) Creates default bean
+    b) Throws NoSuchBeanDefinitionException
+    c) Injects null
+    d) Ignores the dependency
+    Answer: b) Throws NoSuchBeanDefinitionException
+
+12. How do you inject all beans of a specific type?
+    a) List<BeanType> beans
+    b) BeanType[] beans
+    c) Collection<BeanType> beans
+    d) All of the above
+    Answer: d) All of the above
+
+13. What is the purpose of @Qualifier?
+    a) Qualifies bean names
+    b) Disambiguates between multiple beans of same type
+    c) Sets bean quality
+    d) Validates bean properties
+    Answer: b) Disambiguates between multiple beans of same type
+
+14. Which ApplicationContext implementation is used for annotation-based configuration?
+    a) ClassPathXmlApplicationContext
+    b) FileSystemXmlApplicationContext
+    c) AnnotationConfigApplicationContext
+    d) WebApplicationContext
+    Answer: c) AnnotationConfigApplicationContext
+
+15. What is circular dependency?
+    a) Beans with circular references
+    b) Circular method calls
+    c) Recursive bean creation
+    d) Loop in configuration
+    Answer: a) Beans with circular references
+
+16. How does Spring resolve circular dependencies?
+    a) Throws exception
+    b) Uses proxies and early references
+    c) Ignores them
+    d) Creates new instances
+    Answer: b) Uses proxies and early references
+
+17. What does @DependsOn do?
+    a) Shows dependencies
+    b) Forces bean creation order
+    c) Creates dependencies
+    d) Validates dependencies
+    Answer: b) Forces bean creation order
+
+18. How do you inject a Map of beans?
+    a) Map<String, BeanType>
+    b) Map<BeanType, String>
+    c) HashMap<String, BeanType>
+    d) BeanMap<String, BeanType>
+    Answer: a) Map<String, BeanType>
+
+19. What is the difference between @Autowired and @Resource?
+    a) No difference
+    b) @Autowired is by type, @Resource is by name
+    c) @Resource is faster
+    d) @Autowired is JSR standard
+    Answer: b) @Autowired is by type, @Resource is by name
+
+20. When should you use setter injection?
+    a) Always
+    b) For optional dependencies
+    c) For immutable objects
+    d) Never
+    Answer: b) For optional dependencies
+
+21. What is lazy initialization?
+    a) Slow bean creation
+    b) Bean created only when first requested
+    c) Delayed dependency injection
+    d) Late bean registration
+    Answer: b) Bean created only when first requested
+
+22. How do you enable lazy initialization?
+    a) @Lazy
+    b) @LazyInit
+    c) @Delayed
+    d) @OnDemand
+    Answer: a) @Lazy
+
+23. What is ApplicationContextAware?
+    a) Interface to get ApplicationContext reference
+    b) Context monitoring interface
+    c) Application awareness interface
+    d) Context validation interface
+    Answer: a) Interface to get ApplicationContext reference
+
+24. How do you inject property values?
+    a) @Property
+    b) @Value
+    c) @Config
+    d) @Prop
+    Answer: b) @Value
+
+25. What is the main benefit of IoC?
+    a) Better performance
+    b) Loose coupling and testability
+    c) Faster development
+    d) Less memory usage
+    Answer: b) Loose coupling and testability
+
+====================================================================

@@ -1,0 +1,287 @@
+====================================================================
+                            SET COLLECTION IN JAVA
+====================================================================
+
+INTRODUCTION:
+Set is a collection that contains no duplicate elements. It models the mathematical set abstraction and is one of the core interfaces in Java Collections Framework. Set ensures uniqueness of elements based on equals() and hashCode() methods.
+
+KEY CONCEPTS:
+
+1. SET INTERFACE:
+   - Extends Collection interface
+   - No duplicate elements allowed
+   - At most one null element (if nulls are allowed)
+   - No indexed access (unlike List)
+   - Main implementations: HashSet, LinkedHashSet, TreeSet
+
+2. HASHSET:
+   - Uses hash table for storage
+   - No guarantee of iteration order
+   - Best performance for basic operations (O(1))
+   - Allows null values
+   - Not synchronized
+
+3. LINKEDHASHSET:
+   - Extends HashSet
+   - Maintains insertion order
+   - Slightly slower than HashSet
+   - Uses doubly-linked list
+   - Allows null values
+
+4. TREESET:
+   - Implements NavigableSet interface
+   - Stores elements in sorted order
+   - Uses Red-Black tree (balanced BST)
+   - O(log n) for basic operations
+   - Does not allow null values
+   - Elements must be Comparable or use Comparator
+
+5. SET OPERATIONS:
+   - Union: addAll()
+   - Intersection: retainAll()
+   - Difference: removeAll()
+   - Subset check: containsAll()
+
+EXAMPLE CODE:
+
+// HashSet example
+Set<String> hashSet = new HashSet<>();
+hashSet.add("Apple");
+hashSet.add("Banana");
+hashSet.add("Apple");  // Duplicate - won't be added
+System.out.println(hashSet.size()); // Output: 2
+
+// LinkedHashSet example
+Set<Integer> linkedSet = new LinkedHashSet<>();
+linkedSet.add(3);
+linkedSet.add(1);
+linkedSet.add(2);
+// Maintains insertion order: [3, 1, 2]
+
+// TreeSet example
+Set<String> treeSet = new TreeSet<>();
+treeSet.add("Charlie");
+treeSet.add("Alice");
+treeSet.add("Bob");
+// Natural order: [Alice, Bob, Charlie]
+
+// TreeSet with custom comparator
+Set<String> customSet = new TreeSet<>((s1, s2) -> s2.compareTo(s1));
+customSet.addAll(Arrays.asList("A", "C", "B"));
+// Reverse order: [C, B, A]
+
+// Set operations
+Set<Integer> set1 = new HashSet<>(Arrays.asList(1, 2, 3, 4));
+Set<Integer> set2 = new HashSet<>(Arrays.asList(3, 4, 5, 6));
+
+// Union
+Set<Integer> union = new HashSet<>(set1);
+union.addAll(set2);  // [1, 2, 3, 4, 5, 6]
+
+// Intersection
+Set<Integer> intersection = new HashSet<>(set1);
+intersection.retainAll(set2);  // [3, 4]
+
+// Difference
+Set<Integer> difference = new HashSet<>(set1);
+difference.removeAll(set2);  // [1, 2]
+
+// Checking operations
+boolean contains = set1.contains(3);
+boolean subset = set1.containsAll(Arrays.asList(1, 2));
+boolean empty = set1.isEmpty();
+
+// Iteration
+for (String item : treeSet) {
+    System.out.println(item);
+}
+
+// Using Iterator
+Iterator<Integer> it = hashSet.iterator();
+while (it.hasNext()) {
+    Integer value = it.next();
+    if (value % 2 == 0) {
+        it.remove();  // Safe removal during iteration
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What is the main characteristic of Set collection?
+   a) Indexed access
+   b) No duplicate elements
+   c) Sorted elements
+   d) Fixed size
+   Answer: b) No duplicate elements
+
+2. Which Set implementation provides the best performance for basic operations?
+   a) TreeSet
+   b) LinkedHashSet
+   c) HashSet
+   d) All are same
+   Answer: c) HashSet
+
+3. Which Set implementation maintains insertion order?
+   a) HashSet
+   b) LinkedHashSet
+   c) TreeSet
+   d) All maintain order
+   Answer: b) LinkedHashSet
+
+4. Which Set implementation keeps elements sorted?
+   a) HashSet
+   b) LinkedHashSet
+   c) TreeSet
+   d) None
+   Answer: c) TreeSet
+
+5. What is the time complexity of basic operations in HashSet?
+   a) O(1)
+   b) O(log n)
+   c) O(n)
+   d) O(n log n)
+   Answer: a) O(1)
+
+6. What is the time complexity of basic operations in TreeSet?
+   a) O(1)
+   b) O(log n)
+   c) O(n)
+   d) O(n log n)
+   Answer: b) O(log n)
+
+7. Can TreeSet contain null values?
+   a) Yes, multiple nulls
+   b) Yes, only one null
+   c) No, null values not allowed
+   d) Depends on comparator
+   Answer: c) No, null values not allowed
+
+8. Can HashSet contain null values?
+   a) Yes, multiple nulls
+   b) Yes, only one null
+   c) No, null values not allowed
+   d) Only if specified
+   Answer: b) Yes, only one null
+
+9. What happens when you add duplicate element to Set?
+   a) Exception is thrown
+   b) Element is added anyway
+   c. Element is not added, no exception
+   d) Element replaces existing one
+   Answer: c) Element is not added, no exception
+
+10. Which method is used for set union operation?
+    a) union()
+    b) addAll()
+    c) merge()
+    d) combine()
+    Answer: b) addAll()
+
+11. Which method is used for set intersection operation?
+    a) intersect()
+    b) retainAll()
+    c) common()
+    d) and()
+    Answer: b) retainAll()
+
+12. What interface does TreeSet implement?
+    a) Set
+    b) SortedSet
+    c) NavigableSet
+    d) All of the above
+    Answer: d) All of the above
+
+13. How does Set determine if two elements are equal?
+    a) Using == operator
+    b) Using equals() method
+    c) Using compareTo() method
+    d) Using hashCode() method
+    Answer: b) Using equals() method
+
+14. What must be true for objects stored in HashSet?
+    a) Must implement Comparable
+    b) Must override equals() and hashCode()
+    c) Must be immutable
+    d) Must be serializable
+    Answer: b) Must override equals() and hashCode()
+
+15. What data structure does TreeSet use internally?
+    a) Hash table
+    b) Array
+    c) Red-Black tree
+    d) Linked list
+    Answer: c) Red-Black tree
+
+16. Which Set allows indexed access?
+    a) HashSet
+    b) LinkedHashSet
+    c) TreeSet
+    d) None of them
+    Answer: d) None of them
+
+17. What happens if you don't override hashCode() in HashSet elements?
+    a) Compilation error
+    b) Runtime exception
+    c) Duplicate elements may be stored
+    d) Nothing, works fine
+    Answer: c) Duplicate elements may be stored
+
+18. Which method removes all elements from another collection?
+    a) removeAll()
+    b) deleteAll()
+    c) clearAll()
+    d) eraseAll()
+    Answer: a) removeAll()
+
+19. Can you modify Set during iteration?
+    a) Yes, directly
+    b) No, never
+    c) Only using Iterator.remove()
+    d) Only with synchronized sets
+    Answer: c) Only using Iterator.remove()
+
+20. What is the initial capacity of HashSet?
+    a) 10
+    b) 16
+    c) 32
+    d) 0
+    Answer: b) 16
+
+21. Which Set implementation is thread-safe?
+    a) HashSet
+    b) LinkedHashSet
+    c) TreeSet
+    d) None of them
+    Answer: d) None of them
+
+22. How can you make a Set thread-safe?
+    a) Collections.synchronizedSet()
+    b) Use ConcurrentHashMap.newKeySet()
+    c) Both a and b
+    d) Not possible
+    Answer: c) Both a and b
+
+23. What does containsAll() method check?
+    a) If set contains any element from collection
+    b) If set contains all elements from collection
+    c) If sets are equal
+    d) If sets intersect
+    Answer: b) If set contains all elements from collection
+
+24. Which method returns first element in TreeSet?
+    a) first()
+    b) getFirst()
+    c) head()
+    d) top()
+    Answer: a) first()
+
+25. What happens when two objects have same hashCode but different equals?
+    a) Compilation error
+    b) They are stored in same bucket but as different elements
+    c) Only first object is stored
+    d) Exception is thrown
+    Answer: b) They are stored in same bucket but as different elements
+
+====================================================================

@@ -1,0 +1,1123 @@
+====================================================================
+                        JMETER PERFORMANCE TESTING
+====================================================================
+
+INTRODUCTION:
+Apache JMeter is an open-source performance testing tool designed to test and measure the performance of web applications, web services, databases, and other services. It can simulate heavy loads on servers, groups of servers, networks, or objects to test their strength and analyze overall performance under different load types.
+
+KEY CONCEPTS:
+
+1. JMETER COMPONENTS:
+   - Test Plan: Container for all test elements
+   - Thread Groups: Define number of users, ramp-up, and test duration
+   - Samplers: Generate requests (HTTP, FTP, JDBC, etc.)
+   - Listeners: Collect and display test results
+   - Assertions: Validate responses
+   - Timers: Control request timing
+   - Pre/Post Processors: Modify requests/responses
+
+2. TYPES OF TESTING:
+   - Load Testing: Normal expected load
+   - Stress Testing: Beyond normal capacity
+   - Spike Testing: Sudden load increases
+   - Volume Testing: Large amounts of data
+   - Endurance Testing: Extended periods
+
+3. PERFORMANCE METRICS:
+   - Response Time: Time to receive response
+   - Throughput: Requests per second
+   - Error Rate: Percentage of failed requests
+   - CPU and Memory utilization
+   - Network I/O metrics
+
+4. ADVANCED FEATURES:
+   - Distributed testing
+   - Parameterization with CSV files
+   - Dynamic correlation
+   - Custom functions and variables
+   - Integration with CI/CD pipelines
+
+5. REPORTING AND ANALYSIS:
+   - Real-time monitoring
+   - HTML reports
+   - Graphs and charts
+   - Performance trends
+   - Bottleneck identification
+
+EXAMPLE CONFIGURATIONS:
+
+// Java-based JMeter Test Plan Creation
+import org.apache.jmeter.control.LoopController;
+import org.apache.jmeter.control.gui.LoopControlPanel;
+import org.apache.jmeter.control.gui.TestPlanGui;
+import org.apache.jmeter.engine.StandardJMeterEngine;
+import org.apache.jmeter.protocol.http.control.gui.HttpTestSampleGui;
+import org.apache.jmeter.protocol.http.sampler.HTTPSampler;
+import org.apache.jmeter.reporters.ResultCollector;
+import org.apache.jmeter.reporters.Summariser;
+import org.apache.jmeter.save.SaveService;
+import org.apache.jmeter.testelement.TestElement;
+import org.apache.jmeter.testelement.TestPlan;
+import org.apache.jmeter.threads.ThreadGroup;
+import org.apache.jmeter.threads.gui.ThreadGroupGui;
+import org.apache.jmeter.util.JMeterUtils;
+import org.apache.jorphan.collections.HashTree;
+
+public class JMeterTestCreator {
+    
+    public static void main(String[] args) throws Exception {
+        // Initialize JMeter
+        JMeterUtils.loadJMeterProperties("jmeter.properties");
+        JMeterUtils.setJMeterHome("/path/to/jmeter");
+        JMeterUtils.initLocale();
+        
+        // Create Test Plan
+        TestPlan testPlan = createTestPlan();
+        
+        // Create Thread Group
+        ThreadGroup threadGroup = createThreadGroup();
+        
+        // Create HTTP Samplers
+        HTTPSampler loginSampler = createLoginSampler();
+        HTTPSampler getUsersSampler = createGetUsersSampler();
+        HTTPSampler createUserSampler = createCreateUserSampler();
+        HTTPSampler updateUserSampler = createUpdateUserSampler();
+        HTTPSampler deleteUserSampler = createDeleteUserSampler();
+        
+        // Create Listeners
+        ResultCollector resultCollector = createResultCollector();
+        
+        // Build Test Plan Tree
+        HashTree testPlanTree = new HashTree();
+        testPlanTree.add(testPlan);
+        
+        HashTree threadGroupHashTree = testPlanTree.add(testPlan, threadGroup);
+        threadGroupHashTree.add(loginSampler);
+        threadGroupHashTree.add(getUsersSampler);
+        threadGroupHashTree.add(createUserSampler);
+        threadGroupHashTree.add(updateUserSampler);
+        threadGroupHashTree.add(deleteUserSampler);
+        threadGroupHashTree.add(resultCollector);
+        
+        // Save Test Plan
+        SaveService.saveTree(testPlanTree, new FileOutputStream("UserServiceTestPlan.jmx"));
+        
+        // Run Test
+        StandardJMeterEngine jmeter = new StandardJMeterEngine();
+        jmeter.configure(testPlanTree);
+        jmeter.run();
+    }
+    
+    private static TestPlan createTestPlan() {
+        TestPlan testPlan = new TestPlan("User Service Performance Test");
+        testPlan.setProperty(TestElement.TEST_CLASS, TestPlan.class.getName());
+        testPlan.setProperty(TestElement.GUI_CLASS, TestPlanGui.class.getName());
+        testPlan.setEnabled(true);
+        testPlan.setComment("Performance test for User Service REST API");
+        return testPlan;
+    }
+    
+    private static ThreadGroup createThreadGroup() {
+        ThreadGroup threadGroup = new ThreadGroup();
+        threadGroup.setName("User Service Thread Group");
+        threadGroup.setNumThreads(50); // 50 concurrent users
+        threadGroup.setRampUp(30); // Ramp up over 30 seconds
+        threadGroup.setSamplerController(createLoopController());
+        threadGroup.setProperty(TestElement.TEST_CLASS, ThreadGroup.class.getName());
+        threadGroup.setProperty(TestElement.GUI_CLASS, ThreadGroupGui.class.getName());
+        return threadGroup;
+    }
+    
+    private static LoopController createLoopController() {
+        LoopController loopController = new LoopController();
+        loopController.setLoops(10); // Each user executes 10 iterations
+        loopController.setFirst(true);
+        loopController.setProperty(TestElement.TEST_CLASS, LoopController.class.getName());
+        loopController.setProperty(TestElement.GUI_CLASS, LoopControlPanel.class.getName());
+        loopController.initialize();
+        return loopController;
+    }
+    
+    private static HTTPSampler createLoginSampler() {
+        HTTPSampler sampler = new HTTPSampler();
+        sampler.setDomain("localhost");
+        sampler.setPort(8080);
+        sampler.setPath("/api/auth/login");
+        sampler.setMethod("POST");
+        sampler.setName("User Login");
+        sampler.setProperty(TestElement.TEST_CLASS, HTTPSampler.class.getName());
+        sampler.setProperty(TestElement.GUI_CLASS, HttpTestSampleGui.class.getName());
+        
+        // Add request body
+        sampler.addArgument("", "{\"username\":\"testuser\",\"password\":\"password123\"}", "");
+        sampler.setPostBodyRaw(true);
+        sampler.setProperty("HTTPSampler.postBodyRaw", true);
+        
+        // Add headers
+        sampler.getHeaderManager().add("Content-Type", "application/json");
+        
+        return sampler;
+    }
+    
+    private static HTTPSampler createGetUsersSampler() {
+        HTTPSampler sampler = new HTTPSampler();
+        sampler.setDomain("localhost");
+        sampler.setPort(8080);
+        sampler.setPath("/api/users");
+        sampler.setMethod("GET");
+        sampler.setName("Get Users List");
+        sampler.setProperty(TestElement.TEST_CLASS, HTTPSampler.class.getName());
+        sampler.setProperty(TestElement.GUI_CLASS, HttpTestSampleGui.class.getName());
+        
+        // Add query parameters
+        sampler.addArgument("page", "0");
+        sampler.addArgument("size", "20");
+        sampler.addArgument("sort", "username");
+        
+        return sampler;
+    }
+    
+    private static HTTPSampler createCreateUserSampler() {
+        HTTPSampler sampler = new HTTPSampler();
+        sampler.setDomain("localhost");
+        sampler.setPort(8080);
+        sampler.setPath("/api/users");
+        sampler.setMethod("POST");
+        sampler.setName("Create User");
+        sampler.setProperty(TestElement.TEST_CLASS, HTTPSampler.class.getName());
+        sampler.setProperty(TestElement.GUI_CLASS, HttpTestSampleGui.class.getName());
+        
+        // Add request body with variables
+        String requestBody = "{"
+            + "\"username\":\"user_${__threadNum}_${__Random(1,10000)}\","
+            + "\"email\":\"user_${__threadNum}_${__Random(1,10000)}@example.com\","
+            + "\"firstName\":\"TestUser\","
+            + "\"lastName\":\"${__threadNum}\","
+            + "\"password\":\"password123\""
+            + "}";
+        
+        sampler.addArgument("", requestBody, "");
+        sampler.setPostBodyRaw(true);
+        sampler.getHeaderManager().add("Content-Type", "application/json");
+        
+        return sampler;
+    }
+    
+    private static HTTPSampler createUpdateUserSampler() {
+        HTTPSampler sampler = new HTTPSampler();
+        sampler.setDomain("localhost");
+        sampler.setPort(8080);
+        sampler.setPath("/api/users/${userId}");
+        sampler.setMethod("PUT");
+        sampler.setName("Update User");
+        sampler.setProperty(TestElement.TEST_CLASS, HTTPSampler.class.getName());
+        sampler.setProperty(TestElement.GUI_CLASS, HttpTestSampleGui.class.getName());
+        
+        String requestBody = "{"
+            + "\"firstName\":\"UpdatedUser\","
+            + "\"lastName\":\"${__threadNum}_Updated\","
+            + "\"email\":\"updated_${__threadNum}@example.com\""
+            + "}";
+        
+        sampler.addArgument("", requestBody, "");
+        sampler.setPostBodyRaw(true);
+        sampler.getHeaderManager().add("Content-Type", "application/json");
+        
+        return sampler;
+    }
+    
+    private static HTTPSampler createDeleteUserSampler() {
+        HTTPSampler sampler = new HTTPSampler();
+        sampler.setDomain("localhost");
+        sampler.setPort(8080);
+        sampler.setPath("/api/users/${userId}");
+        sampler.setMethod("DELETE");
+        sampler.setName("Delete User");
+        sampler.setProperty(TestElement.TEST_CLASS, HTTPSampler.class.getName());
+        sampler.setProperty(TestElement.GUI_CLASS, HttpTestSampleGui.class.getName());
+        
+        return sampler;
+    }
+    
+    private static ResultCollector createResultCollector() {
+        Summariser summer = null;
+        String summariserName = JMeterUtils.getPropDefault("summariser.name", "summary");
+        if (summariserName.length() > 0) {
+            summer = new Summariser(summariserName);
+        }
+        
+        ResultCollector logger = new ResultCollector(summer);
+        logger.setFilename("user-service-results.jtl");
+        return logger;
+    }
+}
+
+// JMeter Properties Configuration
+/*
+# jmeter.properties
+
+# Number of threads per thread group
+jmeter.threads=50
+
+# Ramp-up period (seconds)
+jmeter.rampup=30
+
+# Test duration (seconds) - 0 means run forever
+jmeter.duration=300
+
+# Loop count per thread
+jmeter.loops=10
+
+# Results file format
+jmeter.save.saveservice.output_format=csv
+jmeter.save.saveservice.response_data=false
+jmeter.save.saveservice.samplerData=false
+jmeter.save.saveservice.requestHeaders=false
+jmeter.save.saveservice.responseHeaders=false
+jmeter.save.saveservice.encoding=false
+jmeter.save.saveservice.bytes=true
+jmeter.save.saveservice.url=true
+jmeter.save.saveservice.filename=false
+jmeter.save.saveservice.hostname=true
+jmeter.save.saveservice.thread_name=true
+jmeter.save.saveservice.time=true
+jmeter.save.saveservice.successful=true
+jmeter.save.saveservice.label=true
+jmeter.save.saveservice.code=true
+jmeter.save.saveservice.message=true
+jmeter.save.saveservice.latency=true
+jmeter.save.saveservice.connect_time=true
+jmeter.save.saveservice.response_message=true
+
+# HTTP connection settings
+httpclient4.retrycount=0
+httpclient4.request.timeout=60000
+httpclient4.connect_timeout=60000
+httpclient4.socket_timeout=60000
+
+# SSL settings
+https.default.protocol=TLS
+https.socket.protocols=TLSv1.2,TLSv1.3
+
+# Memory settings
+heap=-Xms1g -Xmx4g -XX:MaxMetaspaceSize=256m
+new=-XX:NewRatio=3
+survivor=-XX:SurvivorRatio=3
+tenuring=-XX:MaxTenuringThreshold=2
+rmigc=-XX:+DisableAttachMechanism
+
+# Logging
+log_level.jmeter=INFO
+log_level.jmeter.junit=DEBUG
+log_level.jmeter.engine=DEBUG
+*/
+
+// Custom JMeter Function for Dynamic Data
+import org.apache.jmeter.engine.util.CompoundVariable;
+import org.apache.jmeter.functions.AbstractFunction;
+import org.apache.jmeter.functions.InvalidVariableException;
+import org.apache.jmeter.samplers.SampleResult;
+import org.apache.jmeter.samplers.Sampler;
+
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
+
+public class RandomUserDataFunction extends AbstractFunction {
+    
+    private static final String KEY = "__RandomUserData";
+    private static final List<String> desc = new LinkedList<>();
+    private static final String[] FIRST_NAMES = {
+        "John", "Jane", "Michael", "Sarah", "David", "Lisa", "Robert", "Emily",
+        "James", "Ashley", "Christopher", "Jessica", "Matthew", "Amanda"
+    };
+    private static final String[] LAST_NAMES = {
+        "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller",
+        "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez"
+    };
+    
+    static {
+        desc.add("Data Type (firstName, lastName, email, username, phone)");
+    }
+    
+    private Object[] values;
+    private Random random = new Random();
+    
+    @Override
+    public String execute(SampleResult previousResult, Sampler currentSampler) 
+            throws InvalidVariableException {
+        
+        String dataType = ((CompoundVariable) values[0]).execute().trim();
+        
+        switch (dataType.toLowerCase()) {
+            case "firstname":
+                return FIRST_NAMES[random.nextInt(FIRST_NAMES.length)];
+            case "lastname":
+                return LAST_NAMES[random.nextInt(LAST_NAMES.length)];
+            case "email":
+                return generateEmail();
+            case "username":
+                return generateUsername();
+            case "phone":
+                return generatePhone();
+            default:
+                return "Unknown";
+        }
+    }
+    
+    private String generateEmail() {
+        String firstName = FIRST_NAMES[random.nextInt(FIRST_NAMES.length)].toLowerCase();
+        String lastName = LAST_NAMES[random.nextInt(LAST_NAMES.length)].toLowerCase();
+        int number = random.nextInt(9999);
+        return firstName + "." + lastName + number + "@example.com";
+    }
+    
+    private String generateUsername() {
+        String firstName = FIRST_NAMES[random.nextInt(FIRST_NAMES.length)].toLowerCase();
+        int number = random.nextInt(9999);
+        return firstName + number;
+    }
+    
+    private String generatePhone() {
+        return String.format("+1-%03d-%03d-%04d", 
+            random.nextInt(999),
+            random.nextInt(999),
+            random.nextInt(9999));
+    }
+    
+    @Override
+    public void setParameters(Collection<CompoundVariable> parameters) 
+            throws InvalidVariableException {
+        
+        checkParameterCount(parameters, 1);
+        values = parameters.toArray();
+    }
+    
+    @Override
+    public String getReferenceKey() {
+        return KEY;
+    }
+    
+    @Override
+    public List<String> getArgumentDesc() {
+        return desc;
+    }
+}
+
+// JMeter Test Plan XML Configuration
+/*
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.4.1">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="User Service Performance Test">
+      <stringProp name="TestPlan.comments">Comprehensive performance test for User Service REST API</stringProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+      <elementProp name="TestPlan.arguments" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+        <collectionProp name="Arguments.arguments">
+          <elementProp name="BASE_URL" elementType="Argument">
+            <stringProp name="Argument.name">BASE_URL</stringProp>
+            <stringProp name="Argument.value">http://localhost:8080</stringProp>
+          </elementProp>
+          <elementProp name="USERS_ENDPOINT" elementType="Argument">
+            <stringProp name="Argument.name">USERS_ENDPOINT</stringProp>
+            <stringProp name="Argument.value">/api/users</stringProp>
+          </elementProp>
+          <elementProp name="AUTH_ENDPOINT" elementType="Argument">
+            <stringProp name="Argument.name">AUTH_ENDPOINT</stringProp>
+            <stringProp name="Argument.value">/api/auth</stringProp>
+          </elementProp>
+        </collectionProp>
+      </elementProp>
+      <stringProp name="TestPlan.user_define_classpath"></stringProp>
+    </TestPlan>
+    <hashTree>
+      <!-- HTTP Cookie Manager -->
+      <CookieManager guiclass="CookiePanel" testclass="CookieManager" testname="HTTP Cookie Manager">
+        <collectionProp name="CookieManager.cookies"/>
+        <boolProp name="CookieManager.clearEachIteration">false</boolProp>
+      </CookieManager>
+      <hashTree/>
+      
+      <!-- HTTP Header Manager -->
+      <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager">
+        <collectionProp name="HeaderManager.headers">
+          <elementProp name="Content-Type" elementType="Header">
+            <stringProp name="Header.name">Content-Type</stringProp>
+            <stringProp name="Header.value">application/json</stringProp>
+          </elementProp>
+          <elementProp name="Accept" elementType="Header">
+            <stringProp name="Header.name">Accept</stringProp>
+            <stringProp name="Header.value">application/json</stringProp>
+          </elementProp>
+          <elementProp name="User-Agent" elementType="Header">
+            <stringProp name="Header.name">User-Agent</stringProp>
+            <stringProp name="Header.value">JMeter Performance Test</stringProp>
+          </elementProp>
+        </collectionProp>
+      </HeaderManager>
+      <hashTree/>
+      
+      <!-- Load Test Thread Group -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Load Test - Normal Operations">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <stringProp name="LoopController.loops">5</stringProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">50</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">30</stringProp>
+        <longProp name="ThreadGroup.start_time">1640995200000</longProp>
+        <longProp name="ThreadGroup.end_time">1640995200000</longProp>
+        <boolProp name="ThreadGroup.scheduler">false</boolProp>
+        <stringProp name="ThreadGroup.duration"></stringProp>
+        <stringProp name="ThreadGroup.delay"></stringProp>
+      </ThreadGroup>
+      <hashTree>
+        <!-- Login Request -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="01 - User Login">
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+          <stringProp name="HTTPSampler.domain">${__P(server.host,localhost)}</stringProp>
+          <stringProp name="HTTPSampler.port">${__P(server.port,8080)}</stringProp>
+          <stringProp name="HTTPSampler.protocol">http</stringProp>
+          <stringProp name="HTTPSampler.contentEncoding"></stringProp>
+          <stringProp name="HTTPSampler.path">${AUTH_ENDPOINT}/login</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+          <stringProp name="HTTPSampler.embedded_url_re"></stringProp>
+          <stringProp name="HTTPSampler.connect_timeout">60000</stringProp>
+          <stringProp name="HTTPSampler.response_timeout">60000</stringProp>
+          <stringProp name="HTTPSampler.postBodyRaw">true</stringProp>
+          <elementProp name="HTTPsampler.postBody" elementType="HTTPPostBody">
+            <stringProp name="HTTPPostBody.raw">{"username":"admin","password":"admin123"}</stringProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <!-- Response Assertion for Login -->
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Login Response Assertion">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="token">token</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message"></stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_data</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">2</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+          
+          <!-- JSON Extractor for Token -->
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extract JWT Token">
+            <stringProp name="JSONPostProcessor.referenceNames">jwt_token</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$.token</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers"></stringProp>
+            <stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+          </JSONPostProcessor>
+          <hashTree/>
+        </hashTree>
+        
+        <!-- Get Users List -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="02 - Get Users List">
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="page" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">0</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+                <stringProp name="Argument.name">page</stringProp>
+              </elementProp>
+              <elementProp name="size" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">20</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+                <stringProp name="Argument.name">size</stringProp>
+              </elementProp>
+              <elementProp name="sort" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">username</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+                <stringProp name="Argument.name">sort</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+          <stringProp name="HTTPSampler.domain">${__P(server.host,localhost)}</stringProp>
+          <stringProp name="HTTPSampler.port">${__P(server.port,8080)}</stringProp>
+          <stringProp name="HTTPSampler.protocol">http</stringProp>
+          <stringProp name="HTTPSampler.contentEncoding"></stringProp>
+          <stringProp name="HTTPSampler.path">${USERS_ENDPOINT}</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+          <stringProp name="HTTPSampler.embedded_url_re"></stringProp>
+          <stringProp name="HTTPSampler.connect_timeout">60000</stringProp>
+          <stringProp name="HTTPSampler.response_timeout">60000</stringProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <!-- Authorization Header -->
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Auth Header">
+            <collectionProp name="HeaderManager.headers">
+              <elementProp name="Authorization" elementType="Header">
+                <stringProp name="Header.name">Authorization</stringProp>
+                <stringProp name="Header.value">Bearer ${jwt_token}</stringProp>
+              </elementProp>
+            </collectionProp>
+          </HeaderManager>
+          <hashTree/>
+          
+          <!-- Response Time Assertion -->
+          <DurationAssertion guiclass="DurationAssertionGui" testclass="DurationAssertion" testname="Response Time Assertion">
+            <stringProp name="DurationAssertion.duration">2000</stringProp>
+          </DurationAssertion>
+          <hashTree/>
+        </hashTree>
+        
+        <!-- Think Time -->
+        <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Think Time">
+          <stringProp name="ConstantTimer.delay">1000</stringProp>
+          <stringProp name="RandomTimer.range">2000</stringProp>
+        </UniformRandomTimer>
+        <hashTree/>
+      </hashTree>
+      
+      <!-- Stress Test Thread Group -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Stress Test - High Load">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <stringProp name="LoopController.loops">10</stringProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">200</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">60</stringProp>
+        <longProp name="ThreadGroup.start_time">1640995200000</longProp>
+        <longProp name="ThreadGroup.end_time">1640995200000</longProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">300</stringProp>
+        <stringProp name="ThreadGroup.delay">0</stringProp>
+      </ThreadGroup>
+      <hashTree>
+        <!-- CSV Data Source for User Data -->
+        <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="User Test Data">
+          <stringProp name="delimiter">,</stringProp>
+          <stringProp name="fileEncoding">UTF-8</stringProp>
+          <stringProp name="filename">user_test_data.csv</stringProp>
+          <boolProp name="ignoreFirstLine">true</boolProp>
+          <boolProp name="quotedData">false</boolProp>
+          <boolProp name="recycle">true</boolProp>
+          <stringProp name="shareMode">shareMode.all</stringProp>
+          <boolProp name="stopThread">false</boolProp>
+          <stringProp name="variableNames">username,email,firstName,lastName,password</stringProp>
+        </CSVDataSet>
+        <hashTree/>
+        
+        <!-- Create User Request -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Create User - Stress Test">
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+          <stringProp name="HTTPSampler.domain">${__P(server.host,localhost)}</stringProp>
+          <stringProp name="HTTPSampler.port">${__P(server.port,8080)}</stringProp>
+          <stringProp name="HTTPSampler.protocol">http</stringProp>
+          <stringProp name="HTTPSampler.contentEncoding"></stringProp>
+          <stringProp name="HTTPSampler.path">${USERS_ENDPOINT}</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+          <stringProp name="HTTPSampler.embedded_url_re"></stringProp>
+          <stringProp name="HTTPSampler.connect_timeout">60000</stringProp>
+          <stringProp name="HTTPSampler.response_timeout">60000</stringProp>
+          <stringProp name="HTTPSampler.postBodyRaw">true</stringProp>
+          <elementProp name="HTTPsampler.postBody" elementType="HTTPPostBody">
+            <stringProp name="HTTPPostBody.raw">{
+  "username": "${username}_${__threadNum}_${__Random(1,10000)}",
+  "email": "${email}",
+  "firstName": "${firstName}",
+  "lastName": "${lastName}",
+  "password": "${password}"
+}</stringProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree/>
+      </hashTree>
+      
+      <!-- Result Listeners -->
+      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename">results.jtl</stringProp>
+      </ResultCollector>
+      <hashTree/>
+      
+      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>
+      
+      <ResultCollector guiclass="GraphVisualizer" testclass="ResultCollector" testname="Graph Results">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>
+*/
+
+// JMeter Command Line Execution Script
+// run_jmeter_test.sh
+/*
+#!/bin/bash
+
+# JMeter Performance Test Execution Script
+
+JMETER_HOME="/path/to/jmeter"
+TEST_PLAN="UserServiceTestPlan.jmx"
+RESULTS_DIR="results"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+# Create results directory
+mkdir -p ${RESULTS_DIR}
+
+# Test configuration
+THREADS=50
+RAMP_UP=30
+DURATION=300
+LOOPS=10
+
+echo "Starting JMeter Performance Test..."
+echo "Test Plan: ${TEST_PLAN}"
+echo "Threads: ${THREADS}"
+echo "Ramp-up: ${RAMP_UP} seconds"
+echo "Duration: ${DURATION} seconds"
+echo "Loops: ${LOOPS}"
+
+# Execute JMeter test
+${JMETER_HOME}/bin/jmeter -n -t ${TEST_PLAN} \
+  -Jthreads=${THREADS} \
+  -Jrampup=${RAMP_UP} \
+  -Jduration=${DURATION} \
+  -Jloops=${LOOPS} \
+  -Jserver.host=localhost \
+  -Jserver.port=8080 \
+  -l ${RESULTS_DIR}/results_${TIMESTAMP}.jtl \
+  -j ${RESULTS_DIR}/jmeter_${TIMESTAMP}.log \
+  -e -o ${RESULTS_DIR}/dashboard_${TIMESTAMP}
+
+# Generate HTML report
+echo "Generating HTML Report..."
+${JMETER_HOME}/bin/jmeter -g ${RESULTS_DIR}/results_${TIMESTAMP}.jtl \
+  -o ${RESULTS_DIR}/html_report_${TIMESTAMP}
+
+echo "Test completed!"
+echo "Results saved to: ${RESULTS_DIR}"
+echo "Dashboard available at: ${RESULTS_DIR}/dashboard_${TIMESTAMP}/index.html"
+echo "HTML Report available at: ${RESULTS_DIR}/html_report_${TIMESTAMP}/index.html"
+
+# Performance analysis
+echo "Performance Analysis:"
+echo "====================="
+
+# Extract key metrics from results
+awk -F',' 'NR>1 {
+  total_time += $2
+  if($8 == "true") success++; else error++
+  if(min_time == 0 || $2 < min_time) min_time = $2
+  if($2 > max_time) max_time = $2
+  count++
+} 
+END {
+  avg_time = total_time / count
+  success_rate = (success / count) * 100
+  error_rate = (error / count) * 100
+  throughput = count / ('${DURATION}')
+  
+  print "Total Requests: " count
+  print "Successful Requests: " success
+  print "Failed Requests: " error
+  print "Success Rate: " success_rate "%"
+  print "Error Rate: " error_rate "%"
+  print "Average Response Time: " avg_time " ms"
+  print "Min Response Time: " min_time " ms"
+  print "Max Response Time: " max_time " ms"
+  print "Throughput: " throughput " requests/second"
+}' ${RESULTS_DIR}/results_${TIMESTAMP}.jtl
+*/
+
+// CSV Test Data Generation
+// generate_test_data.py
+/*
+import csv
+import random
+import string
+
+def generate_username():
+    return ''.join(random.choices(string.ascii_lowercase, k=8)) + str(random.randint(100, 999))
+
+def generate_email(username):
+    domains = ['example.com', 'test.com', 'demo.com', 'sample.org']
+    return f"{username}@{random.choice(domains)}"
+
+def generate_name():
+    first_names = ['John', 'Jane', 'Michael', 'Sarah', 'David', 'Lisa', 'Robert', 'Emily']
+    last_names = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller']
+    return random.choice(first_names), random.choice(last_names)
+
+def generate_password():
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+
+# Generate test data
+with open('user_test_data.csv', 'w', newline='') as csvfile:
+    fieldnames = ['username', 'email', 'firstName', 'lastName', 'password']
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    
+    writer.writeheader()
+    
+    for i in range(1000):  # Generate 1000 test users
+        username = generate_username()
+        email = generate_email(username)
+        first_name, last_name = generate_name()
+        password = generate_password()
+        
+        writer.writerow({
+            'username': username,
+            'email': email,
+            'firstName': first_name,
+            'lastName': last_name,
+            'password': password
+        })
+
+print("Generated 1000 test user records in user_test_data.csv")
+*/
+
+// Performance Monitoring Integration
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.OperatingSystemMXBean;
+import java.lang.management.ThreadMXBean;
+
+public class PerformanceMonitor {
+    
+    private final OperatingSystemMXBean osBean;
+    private final MemoryMXBean memoryBean;
+    private final ThreadMXBean threadBean;
+    
+    public PerformanceMonitor() {
+        this.osBean = ManagementFactory.getOperatingSystemMXBean();
+        this.memoryBean = ManagementFactory.getMemoryMXBean();
+        this.threadBean = ManagementFactory.getThreadMXBean();
+    }
+    
+    public void logSystemMetrics() {
+        System.out.println("=== System Performance Metrics ===");
+        System.out.println("CPU Usage: " + (osBean.getProcessCpuLoad() * 100) + "%");
+        System.out.println("Available Processors: " + osBean.getAvailableProcessors());
+        System.out.println("System Load Average: " + osBean.getSystemLoadAverage());
+        
+        System.out.println("Heap Memory Used: " + 
+            (memoryBean.getHeapMemoryUsage().getUsed() / 1024 / 1024) + " MB");
+        System.out.println("Heap Memory Max: " + 
+            (memoryBean.getHeapMemoryUsage().getMax() / 1024 / 1024) + " MB");
+        System.out.println("Non-Heap Memory Used: " + 
+            (memoryBean.getNonHeapMemoryUsage().getUsed() / 1024 / 1024) + " MB");
+        
+        System.out.println("Thread Count: " + threadBean.getThreadCount());
+        System.out.println("Peak Thread Count: " + threadBean.getPeakThreadCount());
+        System.out.println("Daemon Thread Count: " + threadBean.getDaemonThreadCount());
+        
+        System.out.println("===================================");
+    }
+    
+    public boolean isSystemHealthy() {
+        double cpuUsage = osBean.getProcessCpuLoad() * 100;
+        long heapUsed = memoryBean.getHeapMemoryUsage().getUsed();
+        long heapMax = memoryBean.getHeapMemoryUsage().getMax();
+        double heapUsagePercent = (double) heapUsed / heapMax * 100;
+        
+        return cpuUsage < 80 && heapUsagePercent < 85;
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What is Apache JMeter primarily used for?
+   a) Unit testing
+   b) Performance testing
+   c) Security testing
+   d) Integration testing
+   Answer: b) Performance testing
+
+2. Which JMeter component defines the number of users?
+   a) Test Plan
+   b) Thread Group
+   c) Sampler
+   d) Listener
+   Answer: b) Thread Group
+
+3. What does ramp-up time control in JMeter?
+   a) Test duration
+   b) How quickly threads are started
+   c) Response time limit
+   d) Server startup time
+   Answer: b) How quickly threads are started
+
+4. Which sampler is used for testing web applications?
+   a) FTP Sampler
+   b) JDBC Sampler
+   c) HTTP Request Sampler
+   d) SMTP Sampler
+   Answer: c) HTTP Request Sampler
+
+5. What do Listeners do in JMeter?
+   a) Listen to server responses
+   b) Collect and display test results
+   c) Monitor network traffic
+   d) Handle user input
+   Answer: b) Collect and display test results
+
+6. Which component validates response data?
+   a) Timer
+   b) Assertion
+   c) Controller
+   d) Processor
+   Answer: b) Assertion
+
+7. What is throughput in performance testing?
+   a) Data transfer rate
+   b) Requests per second
+   c) Response time
+   d) Error rate
+   Answer: b) Requests per second
+
+8. Which timer adds random delays between requests?
+   a) Constant Timer
+   b) Uniform Random Timer
+   c) Gaussian Timer
+   d) Poisson Timer
+   Answer: b) Uniform Random Timer
+
+9. What does CSV Data Config do?
+   a) Exports results to CSV
+   b) Reads test data from CSV files
+   c) Creates CSV reports
+   d) Configures CSV format
+   Answer: b) Reads test data from CSV files
+
+10. Which assertion checks response time?
+    a) Response Assertion
+    b) Duration Assertion
+    c) Size Assertion
+    d) XPath Assertion
+    Answer: b) Duration Assertion
+
+11. What is the purpose of JSON Extractor?
+    a) Extract data from JSON responses
+    b) Create JSON requests
+    c) Validate JSON format
+    d) Convert JSON to XML
+    Answer: a) Extract data from JSON responses
+
+12. Which component manages HTTP cookies?
+    a) Cookie Manager
+    b) Session Manager
+    c) Header Manager
+    d) Cache Manager
+    Answer: a) Cookie Manager
+
+13. What does distributed testing allow?
+    a) Test multiple applications
+    b) Run tests from multiple machines
+    c) Distribute test data
+    d) Share test results
+    Answer: b) Run tests from multiple machines
+
+14. Which JMeter mode is used for command-line execution?
+    a) GUI mode
+    b) Non-GUI mode
+    c) Batch mode
+    d) Server mode
+    Answer: b) Non-GUI mode
+
+15. What is a Pre-Processor used for?
+    a) Process results
+    b) Modify requests before sending
+    c) Handle errors
+    d) Generate reports
+    Answer: b) Modify requests before sending
+
+16. Which element controls request execution flow?
+    a) Sampler
+    b) Controller
+    c) Timer
+    d) Listener
+    Answer: b) Controller
+
+17. What does the View Results Tree show?
+    a) Test plan structure
+    b) Detailed request/response data
+    c) Performance graphs
+    d) Error summary
+    Answer: b) Detailed request/response data
+
+18. Which testing type gradually increases load?
+    a) Load testing
+    b) Stress testing
+    c) Spike testing
+    d) Volume testing
+    Answer: a) Load testing
+
+19. What is the default file extension for JMeter test plans?
+    a) .jmx
+    b) .jmt
+    c) .xml
+    d) .test
+    Answer: a) .jmx
+
+20. Which component adds delays between requests?
+    a) Controller
+    b) Timer
+    c) Processor
+    d) Assertion
+    Answer: b) Timer
+
+21. What does the Summary Report listener display?
+    a) Individual results
+    b) Aggregated statistics
+    c) Error details
+    d) Response content
+    Answer: b) Aggregated statistics
+
+22. Which test type checks system behavior under extreme load?
+    a) Load testing
+    b) Stress testing
+    c) Functional testing
+    d) Unit testing
+    Answer: b) Stress testing
+
+23. What is correlation in JMeter?
+    a) Relating test results
+    b) Extracting dynamic values for reuse
+    c) Connecting test elements
+    d) Comparing responses
+    Answer: b) Extracting dynamic values for reuse
+
+24. Which element stores variables for reuse?
+    a) Variable Manager
+    b) User Defined Variables
+    c) Parameter Store
+    d) Data Holder
+    Answer: b) User Defined Variables
+
+25. What does the Response Code 200 indicate?
+    a) Server error
+    b) Client error
+    c) Successful request
+    d) Redirect
+    Answer: c) Successful request
+
+====================================================================

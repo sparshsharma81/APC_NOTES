@@ -1,0 +1,813 @@
+====================================================================
+                        SPRING DATA JPA
+====================================================================
+
+INTRODUCTION:
+Spring Data JPA is part of the larger Spring Data family that makes it easy to implement JPA-based repositories. It provides a powerful repository abstraction that significantly reduces the amount of boilerplate code required to implement data access layers for various persistence stores.
+
+KEY CONCEPTS:
+
+1. REPOSITORY INTERFACES:
+   - Repository: Base marker interface
+   - CrudRepository: Basic CRUD operations
+   - PagingAndSortingRepository: Pagination and sorting
+   - JpaRepository: JPA-specific operations
+   - Custom repository implementations
+
+2. QUERY METHODS:
+   - Derived query methods from method names
+   - @Query annotation for custom JPQL queries
+   - Native SQL queries with @Query(nativeQuery = true)
+   - Named queries and stored procedures
+   - Query by Example (QBE)
+
+3. PAGINATION AND SORTING:
+   - Pageable interface for pagination
+   - Sort class for sorting criteria
+   - Page and Slice interfaces for results
+   - Custom pagination implementations
+
+4. SPECIFICATIONS AND CRITERIA API:
+   - JPA Criteria API integration
+   - Dynamic query building
+   - Specification interface
+   - Predicate composition
+
+5. AUDITING:
+   - Automatic auditing with @CreatedDate, @LastModifiedDate
+   - @CreatedBy, @LastModifiedBy annotations
+   - AuditorAware interface for user tracking
+   - @EnableJpaAuditing configuration
+
+EXAMPLE CODE:
+
+// Basic Entity for Spring Data JPA
+@Entity
+@Table(name = "products")
+@EntityListeners(AuditingEntityListener.class)
+public class Product {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false)
+    private String name;
+    
+    @Column(length = 1000)
+    private String description;
+    
+    @Column(precision = 10, scale = 2)
+    private BigDecimal price;
+    
+    @Column(name = "stock_quantity")
+    private Integer stockQuantity;
+    
+    @Enumerated(EnumType.STRING)
+    private ProductStatus status;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+    
+    // Auditing fields
+    @CreatedDate
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+    
+    @LastModifiedDate
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @CreatedBy
+    @Column(name = "created_by", updatable = false)
+    private String createdBy;
+    
+    @LastModifiedBy
+    @Column(name = "updated_by")
+    private String updatedBy;
+    
+    // Constructors, getters, and setters...
+}
+
+// Category Entity
+@Entity
+@Table(name = "categories")
+public class Category {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false, unique = true)
+    private String name;
+    
+    private String description;
+    
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Product> products = new ArrayList<>();
+    
+    // Constructors, getters, and setters...
+}
+
+// Product Status Enum
+public enum ProductStatus {
+    ACTIVE, INACTIVE, DISCONTINUED, OUT_OF_STOCK
+}
+
+// Basic Repository Interface
+public interface ProductRepository extends JpaRepository<Product, Long> {
+    
+    // Derived query methods
+    List<Product> findByName(String name);
+    List<Product> findByNameContaining(String name);
+    List<Product> findByPriceBetween(BigDecimal minPrice, BigDecimal maxPrice);
+    List<Product> findByStatus(ProductStatus status);
+    List<Product> findByCategory(Category category);
+    List<Product> findByCategoryName(String categoryName);
+    
+    // Multiple conditions
+    List<Product> findByNameContainingAndStatus(String name, ProductStatus status);
+    List<Product> findByPriceGreaterThanAndStockQuantityGreaterThan(BigDecimal price, Integer stock);
+    
+    // Ordering
+    List<Product> findByStatusOrderByPriceAsc(ProductStatus status);
+    List<Product> findByStatusOrderByCreatedAtDesc(ProductStatus status);
+    
+    // Limiting results
+    List<Product> findTop10ByStatusOrderByPriceDesc(ProductStatus status);
+    List<Product> findFirst5ByCategoryOrderByCreatedAtDesc(Category category);
+    
+    // Boolean queries
+    boolean existsByName(String name);
+    boolean existsByCategoryAndStatus(Category category, ProductStatus status);
+    
+    // Count queries
+    long countByStatus(ProductStatus status);
+    long countByCategory(Category category);
+    
+    // Delete queries
+    void deleteByStatus(ProductStatus status);
+    long removeByStockQuantityLessThan(Integer minStock);
+}
+
+// Custom JPQL Queries
+public interface ProductRepositoryWithCustomQueries extends JpaRepository<Product, Long> {
+    
+    // Simple JPQL query
+    @Query("SELECT p FROM Product p WHERE p.price > :price")
+    List<Product> findExpensiveProducts(@Param("price") BigDecimal price);
+    
+    // JPQL with JOIN
+    @Query("SELECT p FROM Product p JOIN p.category c WHERE c.name = :categoryName")
+    List<Product> findProductsByCategory(@Param("categoryName") String categoryName);
+    
+    // JPQL with multiple parameters
+    @Query("SELECT p FROM Product p WHERE p.name LIKE %:name% AND p.price BETWEEN :minPrice AND :maxPrice")
+    List<Product> findProductsByNameAndPriceRange(@Param("name") String name,
+                                                 @Param("minPrice") BigDecimal minPrice,
+                                                 @Param("maxPrice") BigDecimal maxPrice);
+    
+    // Native SQL query
+    @Query(value = "SELECT * FROM products p WHERE p.stock_quantity < :threshold", nativeQuery = true)
+    List<Product> findLowStockProducts(@Param("threshold") Integer threshold);
+    
+    // Update query
+    @Modifying
+    @Query("UPDATE Product p SET p.status = :newStatus WHERE p.stockQuantity = 0")
+    int updateOutOfStockProducts(@Param("newStatus") ProductStatus newStatus);
+    
+    // Delete query
+    @Modifying
+    @Query("DELETE FROM Product p WHERE p.status = :status")
+    int deleteProductsByStatus(@Param("status") ProductStatus status);
+    
+    // Projection query
+    @Query("SELECT new com.example.dto.ProductSummaryDto(p.id, p.name, p.price) FROM Product p WHERE p.status = :status")
+    List<ProductSummaryDto> findProductSummaries(@Param("status") ProductStatus status);
+    
+    // Aggregate query
+    @Query("SELECT AVG(p.price) FROM Product p WHERE p.category = :category")
+    BigDecimal findAveragePriceByCategory(@Param("category") Category category);
+    
+    // Complex query with subquery
+    @Query("SELECT p FROM Product p WHERE p.price = (SELECT MAX(p2.price) FROM Product p2 WHERE p2.category = p.category)")
+    List<Product> findMostExpensiveProductsInEachCategory();
+}
+
+// Pagination and Sorting Repository
+@Repository
+public interface ProductPaginationRepository extends JpaRepository<Product, Long> {
+    
+    // Pageable methods
+    Page<Product> findByStatus(ProductStatus status, Pageable pageable);
+    Page<Product> findByNameContaining(String name, Pageable pageable);
+    Page<Product> findByPriceBetween(BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable);
+    
+    // Slice instead of Page for better performance when total count is not needed
+    Slice<Product> findByCategoryName(String categoryName, Pageable pageable);
+    
+    // Custom pagination query
+    @Query("SELECT p FROM Product p WHERE p.category.name = :categoryName")
+    Page<Product> findProductsByCategory(@Param("categoryName") String categoryName, Pageable pageable);
+}
+
+// Service Layer with Pagination and Sorting
+@Service
+@Transactional(readOnly = true)
+public class ProductService {
+    
+    @Autowired
+    private ProductRepository productRepository;
+    
+    @Autowired
+    private ProductPaginationRepository paginationRepository;
+    
+    // Basic CRUD operations
+    public Product findById(Long id) {
+        return productRepository.findById(id)
+            .orElseThrow(() -> new ProductNotFoundException("Product not found: " + id));
+    }
+    
+    @Transactional
+    public Product save(Product product) {
+        return productRepository.save(product);
+    }
+    
+    @Transactional
+    public void deleteById(Long id) {
+        if (!productRepository.existsById(id)) {
+            throw new ProductNotFoundException("Product not found: " + id);
+        }
+        productRepository.deleteById(id);
+    }
+    
+    // Pagination examples
+    public Page<Product> getProducts(int page, int size, String sortBy, String sortDirection) {
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") 
+            ? Sort.Direction.DESC : Sort.Direction.ASC;
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        return productRepository.findAll(pageable);
+    }
+    
+    public Page<Product> getProductsByStatus(ProductStatus status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("name").ascending());
+        return paginationRepository.findByStatus(status, pageable);
+    }
+    
+    // Complex sorting
+    public Page<Product> getProductsWithMultipleSort(int page, int size) {
+        Sort sort = Sort.by("category.name").ascending()
+                       .and(Sort.by("price").descending())
+                       .and(Sort.by("name").ascending());
+        
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return productRepository.findAll(pageable);
+    }
+    
+    // Search with pagination
+    public Page<Product> searchProducts(String name, BigDecimal minPrice, BigDecimal maxPrice, 
+                                      int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("name"));
+        return paginationRepository.findByNameContainingAndPriceBetween(name, minPrice, maxPrice, pageable);
+    }
+    
+    // Slice for memory-efficient pagination
+    public Slice<Product> getProductSlice(String categoryName, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return paginationRepository.findByCategoryName(categoryName, pageable);
+    }
+}
+
+// Specifications for Dynamic Queries
+public class ProductSpecifications {
+    
+    public static Specification<Product> hasName(String name) {
+        return (root, query, builder) -> 
+            name == null ? null : builder.like(root.get("name"), "%" + name + "%");
+    }
+    
+    public static Specification<Product> hasStatus(ProductStatus status) {
+        return (root, query, builder) -> 
+            status == null ? null : builder.equal(root.get("status"), status);
+    }
+    
+    public static Specification<Product> priceBetween(BigDecimal minPrice, BigDecimal maxPrice) {
+        return (root, query, builder) -> {
+            if (minPrice == null && maxPrice == null) {
+                return null;
+            }
+            if (minPrice == null) {
+                return builder.lessThanOrEqualTo(root.get("price"), maxPrice);
+            }
+            if (maxPrice == null) {
+                return builder.greaterThanOrEqualTo(root.get("price"), minPrice);
+            }
+            return builder.between(root.get("price"), minPrice, maxPrice);
+        };
+    }
+    
+    public static Specification<Product> belongsToCategory(String categoryName) {
+        return (root, query, builder) -> 
+            categoryName == null ? null : 
+            builder.equal(root.get("category").get("name"), categoryName);
+    }
+    
+    public static Specification<Product> stockGreaterThan(Integer minStock) {
+        return (root, query, builder) -> 
+            minStock == null ? null : 
+            builder.greaterThan(root.get("stockQuantity"), minStock);
+    }
+    
+    public static Specification<Product> createdAfter(LocalDateTime date) {
+        return (root, query, builder) -> 
+            date == null ? null : 
+            builder.greaterThanOrEqualTo(root.get("createdAt"), date);
+    }
+}
+
+// Repository with Specifications
+public interface ProductSpecificationRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
+}
+
+// Service using Specifications
+@Service
+@Transactional(readOnly = true)
+public class ProductSearchService {
+    
+    @Autowired
+    private ProductSpecificationRepository specificationRepository;
+    
+    public Page<Product> searchProducts(ProductSearchCriteria criteria, Pageable pageable) {
+        Specification<Product> spec = Specification.where(null);
+        
+        if (criteria.getName() != null) {
+            spec = spec.and(ProductSpecifications.hasName(criteria.getName()));
+        }
+        
+        if (criteria.getStatus() != null) {
+            spec = spec.and(ProductSpecifications.hasStatus(criteria.getStatus()));
+        }
+        
+        if (criteria.getMinPrice() != null || criteria.getMaxPrice() != null) {
+            spec = spec.and(ProductSpecifications.priceBetween(criteria.getMinPrice(), criteria.getMaxPrice()));
+        }
+        
+        if (criteria.getCategoryName() != null) {
+            spec = spec.and(ProductSpecifications.belongsToCategory(criteria.getCategoryName()));
+        }
+        
+        if (criteria.getMinStock() != null) {
+            spec = spec.and(ProductSpecifications.stockGreaterThan(criteria.getMinStock()));
+        }
+        
+        if (criteria.getCreatedAfter() != null) {
+            spec = spec.and(ProductSpecifications.createdAfter(criteria.getCreatedAfter()));
+        }
+        
+        return specificationRepository.findAll(spec, pageable);
+    }
+    
+    public List<Product> findProductsWithComplexCriteria() {
+        Specification<Product> spec = ProductSpecifications.hasStatus(ProductStatus.ACTIVE)
+            .and(ProductSpecifications.stockGreaterThan(10))
+            .and(ProductSpecifications.priceBetween(BigDecimal.valueOf(10), BigDecimal.valueOf(1000)));
+        
+        return specificationRepository.findAll(spec);
+    }
+}
+
+// Search Criteria DTO
+public class ProductSearchCriteria {
+    private String name;
+    private ProductStatus status;
+    private BigDecimal minPrice;
+    private BigDecimal maxPrice;
+    private String categoryName;
+    private Integer minStock;
+    private LocalDateTime createdAfter;
+    
+    // Constructors, getters, and setters...
+}
+
+// Custom Repository Implementation
+public interface ProductRepositoryCustom {
+    List<Product> findProductsWithCustomLogic(String searchTerm);
+    Page<Product> findProductsWithComplexSearch(ProductSearchCriteria criteria, Pageable pageable);
+}
+
+@Repository
+public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
+    
+    @PersistenceContext
+    private EntityManager entityManager;
+    
+    @Override
+    public List<Product> findProductsWithCustomLogic(String searchTerm) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Product> query = cb.createQuery(Product.class);
+        Root<Product> product = query.from(Product.class);
+        
+        // Complex custom logic
+        Predicate namePredicate = cb.like(product.get("name"), "%" + searchTerm + "%");
+        Predicate descriptionPredicate = cb.like(product.get("description"), "%" + searchTerm + "%");
+        Predicate searchPredicate = cb.or(namePredicate, descriptionPredicate);
+        
+        query.select(product)
+             .where(searchPredicate)
+             .orderBy(cb.desc(product.get("createdAt")));
+        
+        return entityManager.createQuery(query).getResultList();
+    }
+    
+    @Override
+    public Page<Product> findProductsWithComplexSearch(ProductSearchCriteria criteria, Pageable pageable) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Product> query = cb.createQuery(Product.class);
+        Root<Product> product = query.from(Product.class);
+        
+        List<Predicate> predicates = new ArrayList<>();
+        
+        if (criteria.getName() != null) {
+            predicates.add(cb.like(product.get("name"), "%" + criteria.getName() + "%"));
+        }
+        
+        if (criteria.getStatus() != null) {
+            predicates.add(cb.equal(product.get("status"), criteria.getStatus()));
+        }
+        
+        if (criteria.getMinPrice() != null) {
+            predicates.add(cb.greaterThanOrEqualTo(product.get("price"), criteria.getMinPrice()));
+        }
+        
+        if (criteria.getMaxPrice() != null) {
+            predicates.add(cb.lessThanOrEqualTo(product.get("price"), criteria.getMaxPrice()));
+        }
+        
+        query.select(product).where(cb.and(predicates.toArray(new Predicate[0])));
+        
+        // Apply sorting
+        if (pageable.getSort().isSorted()) {
+            List<Order> orders = new ArrayList<>();
+            for (Sort.Order sortOrder : pageable.getSort()) {
+                Order order = sortOrder.isAscending() 
+                    ? cb.asc(product.get(sortOrder.getProperty()))
+                    : cb.desc(product.get(sortOrder.getProperty()));
+                orders.add(order);
+            }
+            query.orderBy(orders);
+        }
+        
+        TypedQuery<Product> typedQuery = entityManager.createQuery(query);
+        
+        // Apply pagination
+        typedQuery.setFirstResult((int) pageable.getOffset());
+        typedQuery.setMaxResults(pageable.getPageSize());
+        
+        List<Product> products = typedQuery.getResultList();
+        
+        // Count query for total elements
+        CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
+        Root<Product> countRoot = countQuery.from(Product.class);
+        countQuery.select(cb.count(countRoot)).where(cb.and(predicates.toArray(new Predicate[0])));
+        Long total = entityManager.createQuery(countQuery).getSingleResult();
+        
+        return new PageImpl<>(products, pageable, total);
+    }
+}
+
+// Combined Repository Interface
+public interface ProductRepository extends JpaRepository<Product, Long>, ProductRepositoryCustom {
+    // Derived query methods and custom methods are both available
+}
+
+// Auditing Configuration
+@Configuration
+@EnableJpaAuditing(auditorAwareRef = "auditorProvider")
+public class JpaAuditingConfiguration {
+    
+    @Bean
+    public AuditorAware<String> auditorProvider() {
+        return new SpringSecurityAuditorAware();
+    }
+}
+
+// Auditor Provider Implementation
+public class SpringSecurityAuditorAware implements AuditorAware<String> {
+    
+    @Override
+    public Optional<String> getCurrentAuditor() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication == null || !authentication.isAuthenticated() || 
+            authentication instanceof AnonymousAuthenticationToken) {
+            return Optional.of("system");
+        }
+        
+        return Optional.of(authentication.getName());
+    }
+}
+
+// Controller with Pagination and Sorting
+@RestController
+@RequestMapping("/api/products")
+public class ProductController {
+    
+    @Autowired
+    private ProductService productService;
+    
+    @Autowired
+    private ProductSearchService searchService;
+    
+    @GetMapping
+    public ResponseEntity<Page<Product>> getProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDirection) {
+        
+        Page<Product> products = productService.getProducts(page, size, sortBy, sortDirection);
+        return ResponseEntity.ok(products);
+    }
+    
+    @GetMapping("/search")
+    public ResponseEntity<Page<Product>> searchProducts(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) ProductStatus status,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) String categoryName,
+            @RequestParam(required = false) Integer minStock,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDirection) {
+        
+        ProductSearchCriteria criteria = new ProductSearchCriteria();
+        criteria.setName(name);
+        criteria.setStatus(status);
+        criteria.setMinPrice(minPrice);
+        criteria.setMaxPrice(maxPrice);
+        criteria.setCategoryName(categoryName);
+        criteria.setMinStock(minStock);
+        
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") 
+            ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        
+        Page<Product> products = searchService.searchProducts(criteria, pageable);
+        return ResponseEntity.ok(products);
+    }
+    
+    @PostMapping
+    public ResponseEntity<Product> createProduct(@Valid @RequestBody Product product) {
+        Product savedProduct = productService.save(product);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @Valid @RequestBody Product product) {
+        product.setId(id);
+        Product updatedProduct = productService.save(product);
+        return ResponseEntity.ok(updatedProduct);
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+        productService.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+// Testing Spring Data JPA
+@DataJpaTest
+public class ProductRepositoryTest {
+    
+    @Autowired
+    private TestEntityManager entityManager;
+    
+    @Autowired
+    private ProductRepository productRepository;
+    
+    @Test
+    public void testFindByName() {
+        // Given
+        Product product = new Product();
+        product.setName("Test Product");
+        product.setPrice(BigDecimal.valueOf(99.99));
+        product.setStatus(ProductStatus.ACTIVE);
+        entityManager.persistAndFlush(product);
+        
+        // When
+        List<Product> found = productRepository.findByName("Test Product");
+        
+        // Then
+        assertThat(found).hasSize(1);
+        assertThat(found.get(0).getName()).isEqualTo("Test Product");
+    }
+    
+    @Test
+    public void testPagination() {
+        // Given - create test data
+        for (int i = 1; i <= 25; i++) {
+            Product product = new Product();
+            product.setName("Product " + i);
+            product.setPrice(BigDecimal.valueOf(i * 10));
+            product.setStatus(ProductStatus.ACTIVE);
+            entityManager.persist(product);
+        }
+        entityManager.flush();
+        
+        // When
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("name"));
+        Page<Product> page = productRepository.findAll(pageable);
+        
+        // Then
+        assertThat(page.getTotalElements()).isEqualTo(25);
+        assertThat(page.getTotalPages()).isEqualTo(3);
+        assertThat(page.getContent()).hasSize(10);
+        assertThat(page.isFirst()).isTrue();
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. Which is the most feature-rich repository interface in Spring Data JPA?
+   a) Repository
+   b) CrudRepository
+   c) PagingAndSortingRepository
+   d) JpaRepository
+   Answer: d) JpaRepository
+
+2. What annotation is used for custom JPQL queries?
+   a) @JPQL
+   b) @Query
+   c) @CustomQuery
+   d) @JpaQuery
+   Answer: b) @Query
+
+3. Which method prefix finds entities by a property?
+   a) getBy
+   b) findBy
+   c) searchBy
+   d) queryBy
+   Answer: b) findBy
+
+4. What does @Modifying annotation do?
+   a) Modifies query results
+   b) Indicates query modifies data (UPDATE/DELETE)
+   c) Enables query modification
+   d) Modifies entity properties
+   Answer: b) Indicates query modifies data (UPDATE/DELETE)
+
+5. Which interface is used for pagination?
+   a) Pagination
+   b) PageRequest
+   c) Pageable
+   d) PageInfo
+   Answer: c) Pageable
+
+6. What does Page interface provide that Slice doesn't?
+   a) Content list
+   b) Page size
+   c) Total element count
+   d) Current page number
+   Answer: c) Total element count
+
+7. Which annotation enables JPA auditing?
+   a) @EnableAuditing
+   b) @EnableJpaAuditing
+   c) @JpaAudit
+   d) @AuditEnabled
+   Answer: b) @EnableJpaAuditing
+
+8. What is the purpose of @CreatedDate?
+   a) Creates date fields
+   b) Automatically sets creation timestamp
+   c) Validates date creation
+   d) Formats creation date
+   Answer: b) Automatically sets creation timestamp
+
+9. Which interface is used for dynamic queries?
+   a) QuerySpecification
+   b) CriteriaSpecification
+   c) Specification
+   d) DynamicQuery
+   Answer: c) Specification
+
+10. What does JpaSpecificationExecutor provide?
+    a) Query execution
+    b) Specification-based queries
+    c) Dynamic query building
+    d) Criteria API integration
+    Answer: b) Specification-based queries
+
+11. How do you create a derived query for "contains" operation?
+    a) findByNameContains
+    b) findByNameContaining
+    c) findByNameLike
+    d) findByNameHaving
+    Answer: b) findByNameContaining
+
+12. Which keyword is used for range queries?
+    a) Range
+    b) Between
+    c) From...To
+    d) Min...Max
+    Answer: b) Between
+
+13. What does @Param annotation do?
+    a) Defines parameters
+    b) Binds method parameters to query parameters
+    c) Validates parameters
+    d) Creates parameter objects
+    Answer: b) Binds method parameters to query parameters
+
+14. How do you enable native SQL queries?
+    a) @Query(native = true)
+    b) @Query(nativeQuery = true)
+    c) @NativeQuery
+    d) @SQL
+    Answer: b) @Query(nativeQuery = true)
+
+15. Which method creates a PageRequest?
+    a) PageRequest.create()
+    b) PageRequest.of()
+    c) PageRequest.build()
+    d) new PageRequest()
+    Answer: b) PageRequest.of()
+
+16. What does Sort.by() create?
+    a) Sort criteria
+    b) Sorting object
+    c) Sort specification
+    d) All of the above
+    Answer: d) All of the above
+
+17. How do you implement custom repository methods?
+    a) Extend custom interface and implement
+    b) Use @CustomRepository
+    c) Override repository methods
+    d) Create custom queries only
+    Answer: a) Extend custom interface and implement
+
+18. Which annotation is used for entity lifecycle auditing?
+    a) @AuditListener
+    b) @EntityListeners(AuditingEntityListener.class)
+    c) @EnableAuditing
+    d) @AuditEnabled
+    Answer: b) @EntityListeners(AuditingEntityListener.class)
+
+19. What is Query by Example (QBE)?
+    a) Example-based queries
+    b) Query using example entity
+    c) Template-based queries
+    d) Sample query generation
+    Answer: b) Query using example entity
+
+20. How do you count entities with derived queries?
+    a) Use count prefix
+    b) Use countBy prefix
+    c) Use @Count annotation
+    d) Override count method
+    Answer: b) Use countBy prefix
+
+21. Which interface provides getCurrentAuditor()?
+    a) AuditorProvider
+    b) AuditorAware
+    c) CurrentAuditor
+    d) AuditProvider
+    Answer: b) AuditorAware
+
+22. What does @LastModifiedBy track?
+    a) Last modification date
+    b) User who last modified entity
+    c) Modification count
+    d) Last modifier ID
+    Answer: b) User who last modified entity
+
+23. How do you combine multiple specifications?
+    a) Use and() and or() methods
+    b) Use + and | operators
+    c) Chain method calls
+    d) Use Specification.combine()
+    Answer: a) Use and() and or() methods
+
+24. Which testing annotation is used for JPA repositories?
+    a) @JpaTest
+    b) @DataJpaTest
+    c) @RepositoryTest
+    d) @SpringDataTest
+    Answer: b) @DataJpaTest
+
+25. What does @PersistenceContext inject?
+    a) Persistence configuration
+    b) EntityManager
+    c) Database context
+    d) JPA context
+    Answer: b) EntityManager
+
+====================================================================

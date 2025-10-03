@@ -1,0 +1,427 @@
+====================================================================
+                        THREADS AND VIRTUAL THREADS
+====================================================================
+
+INTRODUCTION:
+Threads are lightweight processes that allow concurrent execution within a program. Java 21 introduced Virtual Threads (Project Loom) which are user-mode threads managed by the JVM, designed to dramatically reduce the cost of creating and blocking threads.
+
+KEY CONCEPTS:
+
+1. TRADITIONAL THREADS (Platform Threads):
+   - Mapped 1:1 to OS threads
+   - Expensive to create (~2MB stack)
+   - Limited by OS thread limits (~few thousand)
+   - Context switching overhead
+   - Suitable for CPU-intensive tasks
+
+2. VIRTUAL THREADS:
+   - Lightweight user-mode threads
+   - Managed by JVM, not OS
+   - Millions can be created
+   - Small memory footprint (~few KB)
+   - Designed for I/O-intensive applications
+
+3. THREAD LIFECYCLE:
+   - NEW: Thread created but not started
+   - RUNNABLE: Executing or ready to execute
+   - BLOCKED: Waiting for monitor lock
+   - WAITING: Waiting indefinitely for another thread
+   - TIMED_WAITING: Waiting for specified time
+   - TERMINATED: Execution completed
+
+
+   thread lifecycles 
+   new -- created new thread, not started
+    runnable -- started, ready to run
+    running -- currently executing
+    blocked -- waiting for monitor lock
+    waiting -- waiting indefinitely for another thread
+    timed_waiting -- waiting for specified time
+    terminated -- execution completed
+
+4. THREAD CREATION:
+   - Extending Thread class
+   - Implementing Runnable interface
+   - Using lambda expressions
+   - Thread factories
+   - Executor services
+
+5. THREAD COORDINATION:
+   - join(): Wait for thread completion
+   - sleep(): Pause execution
+   - yield(): Hint to scheduler
+   - interrupt(): Interrupt thread execution
+
+EXAMPLE CODE:
+
+// Traditional Thread Creation
+// Method 1: Extending Thread class
+class MyThread extends Thread {
+    @Override
+    public void run() {
+        System.out.println("Thread: " + Thread.currentThread().getName());
+        for (int i = 0; i < 5; i++) {
+            System.out.println("Count: " + i);
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+    }
+}
+
+// Usage
+MyThread thread = new MyThread();
+thread.start(); // Don't call run() directly!
+
+// Method 2: Implementing Runnable
+class MyTask implements Runnable {
+    @Override
+    public void run() {
+        System.out.println("Task running in: " + Thread.currentThread().getName());
+    }
+}
+
+Thread thread2 = new Thread(new MyTask());
+thread2.start();
+
+// Method 3: Lambda expression
+Thread thread3 = new Thread(() -> {
+    System.out.println("Lambda thread: " + Thread.currentThread().getName());
+});
+thread3.start();
+
+// Virtual Threads (Java 21+)
+// Creating virtual threads
+Thread virtualThread = Thread.ofVirtual()
+    .name("virtual-worker")
+    .start(() -> {
+        System.out.println("Virtual thread: " + Thread.currentThread());
+        try {
+            Thread.sleep(1000); // Virtual thread yields carrier thread
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    });
+
+// Virtual thread with builder
+Thread.Builder.OfVirtual virtualBuilder = Thread.ofVirtual()
+    .name("virtual-", 0); // Names will be virtual-0, virtual-1, etc.
+
+Thread vt1 = virtualBuilder.start(() -> doWork());
+Thread vt2 = virtualBuilder.start(() -> doWork());
+
+// ExecutorService with virtual threads
+try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+    for (int i = 0; i < 1000000; i++) { // Create million tasks!
+        executor.submit(() -> {
+            try {
+                Thread.sleep(1000); // I/O simulation
+                return "Task completed";
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return "Task interrupted";
+            }
+        });
+    }
+} // Auto-closes and waits for completion
+
+// Thread coordination examples
+public class ThreadCoordination {
+    public static void main(String[] args) throws InterruptedException {
+        Thread worker = new Thread(() -> {
+            for (int i = 0; i < 10; i++) {
+                System.out.println("Working: " + i);
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    System.out.println("Worker interrupted");
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        });
+        
+        worker.start();
+        
+        // Wait for worker to complete
+        worker.join(); // Main thread waits
+        System.out.println("Worker completed");
+        
+        // Interruption example
+        Thread longRunning = new Thread(() -> {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    Thread.sleep(100);
+                    // Do work
+                } catch (InterruptedException e) {
+                    System.out.println("Interrupted during sleep");
+                    Thread.currentThread().interrupt(); // Restore interrupt status
+                    break;
+                }
+            }
+        });
+        
+        longRunning.start();
+        Thread.sleep(1000);
+        longRunning.interrupt(); // Interrupt after 1 second
+        longRunning.join();
+    }
+}
+
+// Thread-safe counter using virtual threads
+class VirtualThreadCounter {
+    private final AtomicInteger counter = new AtomicInteger(0);
+    
+    public void demonstrateVirtualThreads() {
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<Integer>> futures = new ArrayList<>();
+            
+            // Submit 100,000 virtual threads
+            for (int i = 0; i < 100000; i++) {
+                Future<Integer> future = executor.submit(() -> {
+                    // Simulate I/O work
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    return counter.incrementAndGet();
+                });
+                futures.add(future);
+            }
+            
+            // Collect results
+            for (Future<Integer> future : futures) {
+                try {
+                    future.get(); // Wait for completion
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                }
+            }
+            
+            System.out.println("Final counter: " + counter.get());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+}
+
+// Thread states demonstration
+class ThreadStateDemo {
+    public static void main(String[] args) throws InterruptedException {
+        Thread thread = new Thread(() -> {
+            synchronized (ThreadStateDemo.class) {
+                try {
+                    ThreadStateDemo.class.wait(); // WAITING state
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+        
+        System.out.println("Before start: " + thread.getState()); // NEW
+        thread.start();
+        Thread.sleep(100);
+        System.out.println("After start: " + thread.getState()); // WAITING
+        
+        synchronized (ThreadStateDemo.class) {
+            ThreadStateDemo.class.notify(); // Wake up waiting thread
+        }
+        
+        thread.join();
+        System.out.println("After join: " + thread.getState()); // TERMINATED
+    }
+}
+
+static void doWork() {
+    // Simulate work
+    try {
+        Thread.sleep(100);
+    } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What are Virtual Threads?
+   a) Threads that don't exist
+   b) User-mode threads managed by JVM
+   c) GPU threads
+   d) Simulated threads
+   Answer: b) User-mode threads managed by JVM
+
+2. In which Java version were Virtual Threads introduced?
+   a) Java 17
+   b) Java 19
+   c) Java 21
+   d) Java 22
+   Answer: c) Java 21
+
+3. How many Virtual Threads can typically be created?
+   a) Few hundred
+   b) Few thousand
+   c) Millions
+   d) Unlimited
+   Answer: c) Millions
+
+4. What is the memory overhead of a Virtual Thread?
+   a) 2MB
+   b) 1MB
+   c) Few KB
+   d) Same as platform thread
+   Answer: c) Few KB
+
+5. Which method should be called to start a thread?
+   a) run()
+   b) start()
+   c) execute()
+   d) begin()
+   Answer: b) start()
+
+6. What happens if you call run() directly instead of start()?
+   a) Thread starts normally
+   b) Compilation error
+   c) Method executes in current thread
+   d) Runtime exception
+   Answer: c) Method executes in current thread
+
+7. Which thread state indicates thread is waiting for monitor lock?
+   a) WAITING
+   b) BLOCKED
+   c) RUNNABLE
+   d) TIMED_WAITING
+   Answer: b) BLOCKED
+
+8. What does Thread.join() do?
+   a) Joins threads together
+   b) Current thread waits for target thread to complete
+   c) Merges thread execution
+   d) Creates thread group
+   Answer: b) Current thread waits for target thread to complete
+
+9. What is the correct way to handle InterruptedException?
+   a) Ignore it
+   b) Catch and continue
+   c) Catch and restore interrupt status
+   d) Let it propagate
+   Answer: c) Catch and restore interrupt status
+
+10. Which is better for I/O-intensive applications?
+    a) Platform threads
+    b) Virtual threads
+    c) Both are same
+    d) Single thread
+    Answer: b) Virtual threads
+
+11. What does Thread.sleep() do in virtual thread?
+    a) Blocks carrier thread
+    b) Virtual thread yields carrier thread
+    c) Causes exception
+    d) No effect
+    Answer: b) Virtual thread yields carrier thread
+
+12. How do you create virtual thread executor?
+    a) Executors.newFixedThreadPool()
+    b) Executors.newVirtualThreadPerTaskExecutor()
+    c) Executors.newCachedThreadPool()
+    d) Executors.newSingleThreadExecutor()
+    Answer: b) Executors.newVirtualThreadPerTaskExecutor()
+
+13. What is a carrier thread?
+    a) Thread that carries data
+    b) Platform thread that runs virtual threads
+    c) Main thread
+    d) Background thread
+    Answer: b) Platform thread that runs virtual threads
+
+14. Which interface should be implemented for thread task?
+    a) Thread
+    b) Runnable
+    c) Callable
+    d) Both b and c
+    Answer: d) Both b and c
+
+15. What does Thread.yield() do?
+    a) Returns thread result
+    b) Hints scheduler to give other threads chance
+    c) Stops thread execution
+    d) Yields to parent thread
+    Answer: b) Hints scheduler to give other threads chance
+
+16. Which thread creation method is preferred?
+    a) Extending Thread class
+    b) Implementing Runnable interface
+    c) Using lambda expressions
+    d) Both b and c
+    Answer: d) Both b and c
+
+17. What is thread scheduling?
+    a) Creating thread timeline
+    b) OS/JVM deciding which thread runs when
+    c) Planning thread execution
+    d) Thread synchronization
+    Answer: b) OS/JVM deciding which thread runs when
+
+18. Can virtual threads be interrupted?
+    a) Yes, same as platform threads
+    b) No, they can't be interrupted
+    c) Only during I/O operations
+    d) Only by carrier threads
+    Answer: a) Yes, same as platform threads
+
+19. What is the main benefit of virtual threads?
+    a) Faster execution
+    b) Less memory usage
+    c) Can create millions for I/O-bound tasks
+    d) Better CPU utilization
+    Answer: c) Can create millions for I/O-bound tasks
+
+20. Which state comes after NEW in thread lifecycle?
+    a) RUNNABLE
+    b) RUNNING
+    c) ACTIVE
+    d) STARTED
+    Answer: a) RUNNABLE
+
+21. What does Thread.currentThread() return?
+    a) Main thread
+    b) Reference to currently executing thread
+    c) Thread count
+    d) Thread pool
+    Answer: b) Reference to currently executing thread
+
+22. Can you restart a terminated thread?
+    a) Yes, call start() again
+    b) No, create new thread
+    c) Yes, call restart()
+    d) Yes, call run() again
+    Answer: b) No, create new thread
+
+23. What is thread pinning in virtual threads?
+    a) Attaching thread to CPU
+    b) Virtual thread cannot yield carrier thread
+    c) Fixing thread priority
+    d) Thread synchronization
+    Answer: b) Virtual thread cannot yield carrier thread
+
+24. Which causes thread pinning?
+    a) synchronized blocks
+    b) native method calls
+    c) Both a and b
+    d) Thread.sleep()
+    Answer: c) Both a and b
+
+25. What is the difference between wait() and sleep()?
+    a) wait() releases lock, sleep() doesn't
+    b) sleep() releases lock, wait() doesn't
+    c) No difference
+    d) wait() is faster
+    Answer: a) wait() releases lock, sleep() doesn't
+
+====================================================================

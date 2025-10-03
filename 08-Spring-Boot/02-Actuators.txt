@@ -1,0 +1,773 @@
+====================================================================
+                        SPRING BOOT ACTUATORS
+====================================================================
+
+INTRODUCTION:
+Spring Boot Actuator provides production-ready features to help you monitor and manage your Spring Boot application. It includes built-in endpoints for health checks, metrics, application information, and various management capabilities. Actuator is essential for production deployments as it enables monitoring, troubleshooting, and operational insights.
+
+KEY CONCEPTS:
+
+1. ACTUATOR ENDPOINTS:
+   - Health: Application health status
+   - Info: Application information
+   - Metrics: Application metrics and statistics
+   - Beans: All Spring beans in application context
+   - Environment: Configuration properties and environment variables
+   - Mappings: Request mapping information
+
+2. ENDPOINT CONFIGURATION:
+   - Exposure over HTTP and JMX
+   - Security configuration for endpoints
+   - Custom endpoint creation
+   - Conditional endpoint enablement
+   - Base path and port configuration
+
+3. HEALTH INDICATORS:
+   - Built-in health indicators (database, disk space, etc.)
+   - Custom health indicators
+   - Health groups and composite health
+   - Health endpoint details showing
+
+4. METRICS AND MONITORING:
+   - Micrometer integration
+   - Custom metrics creation
+   - Metric export to monitoring systems
+   - Performance monitoring
+   - Business metrics tracking
+
+5. PRODUCTION FEATURES:
+   - Application shutdown endpoint
+   - Thread dump analysis
+   - Heap dump generation
+   - Log level management
+   - Configuration property management
+
+EXAMPLE CODE:
+
+// Actuator Dependencies (pom.xml)
+/*
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+<dependency>
+    <groupId>io.micrometer</groupId>
+    <artifactId>micrometer-registry-prometheus</artifactId>
+</dependency>
+*/
+
+// Actuator Configuration (application.yml)
+/*
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,beans,env,mappings,threaddump,heapdump
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: always
+    info:
+      enabled: true
+    metrics:
+      enabled: true
+  server:
+    port: 8081  # Different port for management endpoints
+  health:
+    defaults:
+      enabled: true
+    diskspace:
+      enabled: true
+      threshold: 10MB
+    db:
+      enabled: true
+
+info:
+  app:
+    name: Sample Spring Boot Application
+    description: Demo application for Spring Boot Actuator
+    version: 1.0.0
+    developer: John Doe
+  build:
+    artifact: demo-app
+    name: demo-app
+    time: 2024-01-15T10:30:00.000Z
+    version: 1.0.0
+*/
+
+// Custom Health Indicator
+@Component
+public class CustomDatabaseHealthIndicator implements HealthIndicator {
+    
+    @Autowired
+    private DataSource dataSource;
+    
+    @Override
+    public Health health() {
+        try (Connection connection = dataSource.getConnection()) {
+            if (connection.isValid(1)) {
+                return Health.up()
+                    .withDetail("database", "Available")
+                    .withDetail("validationQuery", "SELECT 1")
+                    .withDetail("responseTime", measureResponseTime())
+                    .build();
+            } else {
+                return Health.down()
+                    .withDetail("database", "Connection invalid")
+                    .build();
+            }
+        } catch (SQLException e) {
+            return Health.down()
+                .withDetail("database", "Connection failed")
+                .withDetail("error", e.getMessage())
+                .build();
+        }
+    }
+    
+    private long measureResponseTime() {
+        long start = System.currentTimeMillis();
+        try (Connection connection = dataSource.getConnection()) {
+            PreparedStatement stmt = connection.prepareStatement("SELECT 1");
+            stmt.executeQuery();
+        } catch (SQLException e) {
+            // Log error but don't fail health check for response time measurement
+        }
+        return System.currentTimeMillis() - start;
+    }
+}
+
+// External Service Health Indicator
+@Component
+public class ExternalServiceHealthIndicator implements HealthIndicator {
+    
+    @Autowired
+    private RestTemplate restTemplate;
+    
+    @Value("${external.service.url:http://localhost:8080/api/ping}")
+    private String externalServiceUrl;
+    
+    @Override
+    public Health health() {
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                externalServiceUrl,
+                HttpMethod.GET,
+                null,
+                String.class
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return Health.up()
+                    .withDetail("externalService", "Available")
+                    .withDetail("url", externalServiceUrl)
+                    .withDetail("status", response.getStatusCode())
+                    .withDetail("responseTime", measureExternalServiceResponseTime())
+                    .build();
+            } else {
+                return Health.down()
+                    .withDetail("externalService", "Unavailable")
+                    .withDetail("url", externalServiceUrl)
+                    .withDetail("status", response.getStatusCode())
+                    .build();
+            }
+        } catch (Exception e) {
+            return Health.down()
+                .withDetail("externalService", "Connection failed")
+                .withDetail("url", externalServiceUrl)
+                .withDetail("error", e.getMessage())
+                .build();
+        }
+    }
+    
+    private long measureExternalServiceResponseTime() {
+        long start = System.currentTimeMillis();
+        try {
+            restTemplate.getForObject(externalServiceUrl, String.class);
+        } catch (Exception e) {
+            // Ignore for measurement
+        }
+        return System.currentTimeMillis() - start;
+    }
+}
+
+// Composite Health Indicator
+@Component
+public class ApplicationHealthIndicator extends CompositeHealthContributor {
+    
+    public ApplicationHealthIndicator(CustomDatabaseHealthIndicator dbHealth,
+                                    ExternalServiceHealthIndicator serviceHealth) {
+        Map<String, HealthContributor> contributors = new LinkedHashMap<>();
+        contributors.put("database", dbHealth);
+        contributors.put("externalService", serviceHealth);
+        contributors.put("diskSpace", new DiskSpaceHealthIndicator(new File("."), Duration.ofSeconds(1)));
+        
+        // Add the contributors to this composite
+        contributors.forEach(this::addContributor);
+    }
+}
+
+// Custom Info Contributor
+@Component
+public class CustomInfoContributor implements InfoContributor {
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Override
+    public void contribute(Info.Builder builder) {
+        Map<String, Object> details = new HashMap<>();
+        
+        // Application statistics
+        details.put("totalUsers", userRepository.count());
+        details.put("activeUsers", userRepository.countByActiveTrue());
+        details.put("uptime", ManagementFactory.getRuntimeMXBean().getUptime());
+        
+        // System information
+        Runtime runtime = Runtime.getRuntime();
+        details.put("memoryUsed", runtime.totalMemory() - runtime.freeMemory());
+        details.put("memoryTotal", runtime.totalMemory());
+        details.put("processors", runtime.availableProcessors());
+        
+        // Application features
+        details.put("features", Arrays.asList("user-management", "email-notifications", "audit-logging"));
+        
+        builder.withDetail("application", details);
+    }
+}
+
+// Custom Metrics Configuration
+@Configuration
+public class MetricsConfig {
+    
+    // Custom counter metric
+    @Bean
+    public Counter userRegistrationCounter(MeterRegistry meterRegistry) {
+        return Counter.builder("user.registrations")
+            .description("Number of user registrations")
+            .tag("type", "registration")
+            .register(meterRegistry);
+    }
+    
+    // Custom timer metric
+    @Bean
+    public Timer userServiceTimer(MeterRegistry meterRegistry) {
+        return Timer.builder("user.service.execution.time")
+            .description("User service method execution time")
+            .register(meterRegistry);
+    }
+    
+    // Custom gauge metric
+    @Bean
+    public Gauge activeUserGauge(MeterRegistry meterRegistry, UserRepository userRepository) {
+        return Gauge.builder("users.active.count")
+            .description("Number of active users")
+            .register(meterRegistry, userRepository, repo -> repo.countByActiveTrue());
+    }
+}
+
+// Service with Custom Metrics
+@Service
+public class MetricsEnabledUserService {
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Autowired
+    private Counter userRegistrationCounter;
+    
+    @Autowired
+    private Timer userServiceTimer;
+    
+    @Autowired
+    private MeterRegistry meterRegistry;
+    
+    public User createUser(User user) {
+        return Timer.Sample.start(meterRegistry)
+            .stop(userServiceTimer.start())
+            .recordCallable(() -> {
+                User savedUser = userRepository.save(user);
+                
+                // Increment counter
+                userRegistrationCounter.increment(
+                    Tags.of(
+                        "country", user.getCountry(),
+                        "source", "web"
+                    )
+                );
+                
+                // Record distribution summary
+                DistributionSummary.builder("user.age")
+                    .description("User age distribution")
+                    .register(meterRegistry)
+                    .record(calculateAge(user.getBirthDate()));
+                
+                return savedUser;
+            });
+    }
+    
+    public List<User> getAllUsers() {
+        return userServiceTimer.recordCallable(() -> {
+            return userRepository.findAll();
+        });
+    }
+    
+    @EventListener
+    public void handleUserLogin(UserLoginEvent event) {
+        // Custom business metric
+        meterRegistry.counter("user.logins",
+            Tags.of(
+                "country", event.getUser().getCountry(),
+                "device", event.getDeviceType()
+            )
+        ).increment();
+    }
+    
+    private int calculateAge(LocalDate birthDate) {
+        return Period.between(birthDate, LocalDate.now()).getYears();
+    }
+}
+
+// Custom Actuator Endpoint
+@Component
+@Endpoint(id = "custom")
+public class CustomActuatorEndpoint {
+    
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private ApplicationContext applicationContext;
+    
+    // Read operation (GET)
+    @ReadOperation
+    public Map<String, Object> customInfo() {
+        Map<String, Object> info = new HashMap<>();
+        
+        // Application statistics
+        info.put("totalUsers", userService.getTotalUserCount());
+        info.put("activeUsers", userService.getActiveUserCount());
+        info.put("lastUserRegistration", userService.getLastRegistrationTime());
+        
+        // Bean count
+        info.put("totalBeans", applicationContext.getBeanDefinitionCount());
+        
+        // Memory information
+        Runtime runtime = Runtime.getRuntime();
+        Map<String, Object> memory = new HashMap<>();
+        memory.put("free", runtime.freeMemory());
+        memory.put("total", runtime.totalMemory());
+        memory.put("max", runtime.maxMemory());
+        memory.put("used", runtime.totalMemory() - runtime.freeMemory());
+        info.put("memory", memory);
+        
+        return info;
+    }
+    
+    // Write operation (POST) with parameters
+    @WriteOperation
+    public Map<String, Object> resetUserStats(@Selector String statType) {
+        Map<String, Object> result = new HashMap<>();
+        
+        switch (statType.toLowerCase()) {
+            case "logins":
+                userService.resetLoginStats();
+                result.put("message", "Login statistics reset successfully");
+                break;
+            case "registrations":
+                userService.resetRegistrationStats();
+                result.put("message", "Registration statistics reset successfully");
+                break;
+            default:
+                result.put("error", "Unknown stat type: " + statType);
+        }
+        
+        result.put("timestamp", LocalDateTime.now());
+        return result;
+    }
+    
+    // Delete operation (DELETE)
+    @DeleteOperation
+    public Map<String, Object> clearCache(@Selector String cacheType) {
+        Map<String, Object> result = new HashMap<>();
+        
+        // Clear specific cache
+        cacheManager.getCache(cacheType).clear();
+        
+        result.put("message", "Cache '" + cacheType + "' cleared successfully");
+        result.put("timestamp", LocalDateTime.now());
+        
+        return result;
+    }
+}
+
+// Web-based Custom Endpoint
+@RestController
+@RequestMapping("/actuator/application")
+public class ApplicationManagementEndpoint {
+    
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
+    
+    @Autowired
+    private Environment environment;
+    
+    // Get application status
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Object>> getApplicationStatus() {
+        Map<String, Object> status = new HashMap<>();
+        
+        status.put("running", applicationContext.isRunning());
+        status.put("active", applicationContext.isActive());
+        status.put("startTime", new Date(applicationContext.getStartupDate()));
+        status.put("profiles", environment.getActiveProfiles());
+        
+        return ResponseEntity.ok(status);
+    }
+    
+    // Refresh application context
+    @PostMapping("/refresh")
+    public ResponseEntity<Map<String, Object>> refreshContext() {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            applicationContext.refresh();
+            result.put("message", "Application context refreshed successfully");
+            result.put("timestamp", LocalDateTime.now());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            result.put("error", "Failed to refresh context: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+    }
+    
+    // Get configuration properties
+    @GetMapping("/config")
+    public ResponseEntity<Map<String, Object>> getConfiguration(
+            @RequestParam(required = false) String prefix) {
+        
+        Map<String, Object> config = new HashMap<>();
+        
+        if (prefix != null) {
+            // Get properties with specific prefix
+            Map<String, Object> prefixedProps = new HashMap<>();
+            for (PropertySource<?> propertySource : ((ConfigurableEnvironment) environment).getPropertySources()) {
+                if (propertySource instanceof EnumerablePropertySource) {
+                    EnumerablePropertySource<?> enumerable = (EnumerablePropertySource<?>) propertySource;
+                    for (String key : enumerable.getPropertyNames()) {
+                        if (key.startsWith(prefix)) {
+                            prefixedProps.put(key, environment.getProperty(key));
+                        }
+                    }
+                }
+            }
+            config.put("properties", prefixedProps);
+        } else {
+            config.put("profiles", environment.getActiveProfiles());
+            config.put("defaultProfiles", environment.getDefaultProfiles());
+        }
+        
+        return ResponseEntity.ok(config);
+    }
+}
+
+// Security Configuration for Actuator
+@Configuration
+public class ActuatorSecurityConfig {
+    
+    @Bean
+    public SecurityFilterChain actuatorSecurityFilterChain(HttpSecurity http) throws Exception {
+        http.requestMatcher(EndpointRequest.toAnyEndpoint())
+            .authorizeHttpRequests(requests -> 
+                requests
+                    .requestMatchers(EndpointRequest.to(HealthEndpoint.class)).permitAll()
+                    .requestMatchers(EndpointRequest.to(InfoEndpoint.class)).permitAll()
+                    .anyRequest().hasRole("ADMIN")
+            )
+            .httpBasic(Customizer.withDefaults());
+        
+        return http.build();
+    }
+}
+
+// Health Groups Configuration
+@Configuration
+public class HealthGroupsConfig {
+    
+    @Bean
+    public HealthEndpointGroups healthEndpointGroups() {
+        return HealthEndpointGroups.of("liveness", this::livenessGroup)
+                                  .and("readiness", this::readinessGroup);
+    }
+    
+    private HealthEndpointGroup livenessGroup() {
+        return HealthEndpointGroup.builder()
+            .include("ping", "custom")
+            .showDetails(HealthEndpointGroup.Show.ALWAYS)
+            .build();
+    }
+    
+    private HealthEndpointGroup readinessGroup() {
+        return HealthEndpointGroup.builder()
+            .include("db", "externalService", "diskSpace")
+            .showDetails(HealthEndpointGroup.Show.WHEN_AUTHORIZED)
+            .build();
+    }
+}
+
+// Actuator Event Listener
+@Component
+public class ActuatorEventListener {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ActuatorEventListener.class);
+    
+    @EventListener
+    public void handleContextRefresh(ContextRefreshedEvent event) {
+        logger.info("Application context refreshed: {}", 
+                   event.getApplicationContext().getDisplayName());
+    }
+    
+    @EventListener
+    public void handleContextClosed(ContextClosedEvent event) {
+        logger.info("Application context closed: {}", 
+                   event.getApplicationContext().getDisplayName());
+    }
+    
+    @EventListener
+    public void handleHealthChanged(HealthChangeEvent event) {
+        logger.info("Health status changed from {} to {}", 
+                   event.getPreviousStatus(), event.getCurrentStatus());
+    }
+}
+
+// Actuator Integration Test
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@TestPropertySource(properties = {
+    "management.endpoints.web.exposure.include=*",
+    "management.endpoint.health.show-details=always"
+})
+public class ActuatorIntegrationTest {
+    
+    @Autowired
+    private TestRestTemplate restTemplate;
+    
+    @LocalServerPort
+    private int port;
+    
+    @Test
+    public void testHealthEndpoint() {
+        ResponseEntity<Map> response = restTemplate.getForEntity(
+            "http://localhost:" + port + "/actuator/health", Map.class);
+        
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().containsKey("status"));
+    }
+    
+    @Test
+    public void testInfoEndpoint() {
+        ResponseEntity<Map> response = restTemplate.getForEntity(
+            "http://localhost:" + port + "/actuator/info", Map.class);
+        
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().containsKey("app"));
+    }
+    
+    @Test
+    public void testMetricsEndpoint() {
+        ResponseEntity<Map> response = restTemplate.getForEntity(
+            "http://localhost:" + port + "/actuator/metrics", Map.class);
+        
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().containsKey("names"));
+    }
+    
+    @Test
+    public void testCustomEndpoint() {
+        ResponseEntity<Map> response = restTemplate.getForEntity(
+            "http://localhost:" + port + "/actuator/custom", Map.class);
+        
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().containsKey("totalUsers"));
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What is Spring Boot Actuator?
+   a) Boot loader for Spring
+   b) Production-ready features for monitoring and management
+   c) Application starter
+   d) Configuration manager
+   Answer: b) Production-ready features for monitoring and management
+
+2. Which endpoint provides application health status?
+   a) /status
+   b) /health
+   c) /check
+   d) /alive
+   Answer: b) /health
+
+3. How do you expose actuator endpoints over HTTP?
+   a) management.endpoints.web.exposure.include
+   b) management.endpoints.http.enabled
+   c) management.web.endpoints.expose
+   d) management.http.endpoints.include
+   Answer: a) management.endpoints.web.exposure.include
+
+4. What interface is used to create custom health indicators?
+   a) HealthChecker
+   b) HealthIndicator
+   c) HealthContributor
+   d) HealthProvider
+   Answer: b) HealthIndicator
+
+5. Which annotation creates custom actuator endpoints?
+   a) @ActuatorEndpoint
+   b) @CustomEndpoint
+   c) @Endpoint
+   d) @ManagementEndpoint
+   Answer: c) @Endpoint
+
+6. What does the /info endpoint display?
+   a) System information
+   b) Application information
+   c) User information
+   d) Configuration information
+   Answer: b) Application information
+
+7. How do you add custom information to /info endpoint?
+   a) Implement InfoProvider
+   b) Implement InfoContributor
+   c) Use @InfoEndpoint
+   d) Configure info properties
+   Answer: b) Implement InfoContributor
+
+8. Which endpoint shows all Spring beans?
+   a) /beans
+   b) /components
+   c) /spring-beans
+   d) /context
+   Answer: a) /beans
+
+9. What is the default base path for actuator endpoints?
+   a) /management
+   b) /admin
+   c) /actuator
+   d) /monitor
+   Answer: c) /actuator
+
+10. How do you secure actuator endpoints?
+    a) management.security.enabled=true
+    b) Configure Spring Security
+    c) Use @Secured annotation
+    d) Enable actuator security
+    Answer: b) Configure Spring Security
+
+11. Which endpoint provides application metrics?
+    a) /stats
+    b) /metrics
+    c) /monitoring
+    d) /performance
+    Answer: b) /metrics
+
+12. What library is used for metrics in Spring Boot?
+    a) Dropwizard Metrics
+    b) Micrometer
+    c) Spring Metrics
+    d) Java Metrics
+    Answer: b) Micrometer
+
+13. How do you create a custom counter metric?
+    a) Use Counter.builder()
+    b) Use @Counter annotation
+    c) Implement CounterMetric
+    d) Use MetricCounter class
+    Answer: a) Use Counter.builder()
+
+14. Which annotation marks a read operation in custom endpoints?
+    a) @GetOperation
+    b) @ReadOperation
+    c) @SelectOperation
+    d) @ViewOperation
+    Answer: b) @ReadOperation
+
+15. What does health groups feature allow?
+    a) Grouping health checks
+    b) Creating health categories
+    c) Organizing health indicators
+    d) All of the above
+    Answer: d) All of the above
+
+16. How do you change the management server port?
+    a) management.port
+    b) management.server.port
+    c) actuator.port
+    d) management.endpoint.port
+    Answer: b) management.server.port
+
+17. Which endpoint allows graceful application shutdown?
+    a) /stop
+    b) /shutdown
+    c) /terminate
+    d) /exit
+    Answer: b) /shutdown
+
+18. What does /threaddump endpoint provide?
+    a) Thread pool information
+    b) Current thread dump
+    c) Thread statistics
+    d) Thread configuration
+    Answer: b) Current thread dump
+
+19. How do you enable detailed health information?
+    a) management.endpoint.health.show-details=always
+    b) management.health.details=true
+    c) management.endpoint.health.detailed=true
+    d) management.health.show-all=true
+    Answer: a) management.endpoint.health.show-details=always
+
+20. Which endpoint shows request mappings?
+    a) /routes
+    b) /mappings
+    c) /endpoints
+    d) /paths
+    Answer: b) /mappings
+
+21. What is the purpose of @WriteOperation?
+    a) Write data to endpoint
+    b) Marks write operations in custom endpoints
+    c) Writes endpoint configuration
+    d) Creates writable endpoints
+    Answer: b) Marks write operations in custom endpoints
+
+22. How do you generate heap dump?
+    a) /heapdump endpoint
+    b) /memory-dump endpoint
+    c) /heap endpoint
+    d) /dump endpoint
+    Answer: a) /heapdump endpoint
+
+23. Which endpoint shows environment variables?
+    a) /env
+    b) /environment
+    c) /config
+    d) /properties
+    Answer: a) /env
+
+24. What does CompositeHealthContributor do?
+    a) Combines health checks
+    b) Creates composite health indicators
+    c) Groups multiple health contributors
+    d) All of the above
+    Answer: d) All of the above
+
+25. How do you disable a specific actuator endpoint?
+    a) management.endpoint.[name].enabled=false
+    b) management.endpoints.[name].disabled=true
+    c) actuator.endpoint.[name].enabled=false
+    d) management.[name].endpoint.enabled=false
+    Answer: a) management.endpoint.[name].enabled=false
+
+====================================================================

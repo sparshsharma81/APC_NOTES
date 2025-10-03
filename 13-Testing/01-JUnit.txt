@@ -1,0 +1,541 @@
+====================================================================
+                            JUNIT TESTING FRAMEWORK
+====================================================================
+
+INTRODUCTION:
+JUnit is the most popular unit testing framework for Java applications. JUnit 5 (Jupiter) is the latest version, providing a modern foundation for developer-side testing with improved architecture, better assertions, and enhanced extensibility.
+
+KEY CONCEPTS:
+
+1. JUNIT 5 ARCHITECTURE:
+   - JUnit Platform: Foundation for launching testing frameworks
+   - JUnit Jupiter: Programming and extension model for JUnit 5
+   - JUnit Vintage: Provides backward compatibility with JUnit 3 and 4
+
+2. ANNOTATIONS:
+   - @Test: Marks test methods
+   - @BeforeEach/@AfterEach: Setup/cleanup for each test
+   - @BeforeAll/@AfterAll: Setup/cleanup for all tests in class
+   - @DisplayName: Custom display names for tests
+   - @Disabled: Disable tests
+   - @ParameterizedTest: Parameterized tests
+
+3. ASSERTIONS:
+   - assertEquals(): Check equality
+   - assertTrue()/assertFalse(): Check boolean conditions
+   - assertNull()/assertNotNull(): Check null values
+   - assertThrows(): Check exceptions
+   - assertAll(): Group multiple assertions
+
+4. TEST LIFECYCLE:
+   - @BeforeAll (once before all tests)
+   - @BeforeEach (before each test)
+   - @Test (actual test)
+   - @AfterEach (after each test)
+   - @AfterAll (once after all tests)
+
+5. ADVANCED FEATURES:
+   - Parameterized tests
+   - Dynamic tests
+   - Nested tests
+   - Conditional test execution
+   - Test extensions
+
+EXAMPLE CODE:
+
+// Basic Test Class
+import org.junit.jupiter.api.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+@DisplayName("Calculator Tests")
+class CalculatorTest {
+    
+    private Calculator calculator;
+    
+    @BeforeAll
+    static void initAll() {
+        System.out.println("Starting Calculator tests");
+    }
+    
+    @BeforeEach
+    void init() {
+        calculator = new Calculator();
+    }
+    
+    @Test
+    @DisplayName("Addition of two positive numbers")
+    void testAddition() {
+        assertEquals(5, calculator.add(2, 3));
+        assertEquals(0, calculator.add(-1, 1));
+    }
+    
+    @Test
+    void testSubtraction() {
+        assertEquals(2, calculator.subtract(5, 3));
+        assertEquals(-2, calculator.subtract(3, 5));
+    }
+    
+    @Test
+    void testMultiplication() {
+        assertEquals(6, calculator.multiply(2, 3));
+        assertEquals(0, calculator.multiply(0, 5));
+    }
+    
+    @Test
+    void testDivision() {
+        assertEquals(2.0, calculator.divide(6, 3), 0.001);
+        assertThrows(IllegalArgumentException.class, () -> {
+            calculator.divide(5, 0);
+        });
+    }
+    
+    @Test
+    @Disabled("Feature not implemented yet")
+    void testSquareRoot() {
+        // This test is disabled
+        assertEquals(3, calculator.sqrt(9));
+    }
+    
+    @AfterEach
+    void tearDown() {
+        calculator = null;
+    }
+    
+    @AfterAll
+    static void tearDownAll() {
+        System.out.println("Finished Calculator tests");
+    }
+}
+
+// Calculator class being tested
+class Calculator {
+    public int add(int a, int b) {
+        return a + b;
+    }
+    
+    public int subtract(int a, int b) {
+        return a - b;
+    }
+    
+    public int multiply(int a, int b) {
+        return a * b;
+    }
+    
+    public double divide(int a, int b) {
+        if (b == 0) {
+            throw new IllegalArgumentException("Division by zero");
+        }
+        return (double) a / b;
+    }
+    
+    public double sqrt(double number) {
+        return Math.sqrt(number);
+    }
+}
+
+// Parameterized Tests
+@ParameterizedTest
+@ValueSource(ints = {1, 2, 3, 4, 5})
+void testIsPositive(int number) {
+    assertTrue(number > 0);
+}
+
+@ParameterizedTest
+@CsvSource({
+    "1, 1, 2",
+    "2, 3, 5", 
+    "-1, -2, -3",
+    "0, 5, 5"
+})
+void testAdditionWithCsv(int a, int b, int expected) {
+    assertEquals(expected, calculator.add(a, b));
+}
+
+@ParameterizedTest
+@EnumSource(Month.class)
+void testMonthValues(Month month) {
+    assertNotNull(month);
+    assertTrue(month.getValue() >= 1 && month.getValue() <= 12);
+}
+
+@ParameterizedTest
+@MethodSource("stringProvider")
+void testStringLength(String str) {
+    assertNotNull(str);
+    assertTrue(str.length() > 0);
+}
+
+static Stream<String> stringProvider() {
+    return Stream.of("hello", "world", "junit", "test");
+}
+
+// Nested Tests
+@DisplayName("Calculator Nested Tests")
+class CalculatorNestedTest {
+    
+    Calculator calculator;
+    
+    @BeforeEach
+    void setUp() {
+        calculator = new Calculator();
+    }
+    
+    @Nested
+    @DisplayName("Addition Tests")
+    class AdditionTests {
+        
+        @Test
+        @DisplayName("Positive numbers")
+        void testPositiveNumbers() {
+            assertEquals(5, calculator.add(2, 3));
+        }
+        
+        @Test
+        @DisplayName("Negative numbers")
+        void testNegativeNumbers() {
+            assertEquals(-5, calculator.add(-2, -3));
+        }
+        
+        @Test
+        @DisplayName("Mixed numbers")
+        void testMixedNumbers() {
+            assertEquals(1, calculator.add(-2, 3));
+        }
+    }
+    
+    @Nested
+    @DisplayName("Division Tests")
+    class DivisionTests {
+        
+        @Test
+        void testNormalDivision() {
+            assertEquals(2.0, calculator.divide(6, 3));
+        }
+        
+        @Test
+        void testDivisionByZero() {
+            Exception exception = assertThrows(
+                IllegalArgumentException.class, 
+                () -> calculator.divide(5, 0)
+            );
+            assertEquals("Division by zero", exception.getMessage());
+        }
+    }
+}
+
+// Advanced Assertions
+@Test
+void testAdvancedAssertions() {
+    // Grouped assertions
+    assertAll("address",
+        () -> assertEquals("John", person.getFirstName()),
+        () -> assertEquals("Doe", person.getLastName()),
+        () -> assertEquals("john.doe@example.com", person.getEmail())
+    );
+    
+    // Exception testing with message verification
+    IllegalArgumentException exception = assertThrows(
+        IllegalArgumentException.class,
+        () -> new Person("", "Doe", "invalid-email"),
+        "Should throw exception for invalid input"
+    );
+    assertTrue(exception.getMessage().contains("Invalid"));
+    
+    // Timeout testing
+    assertTimeout(Duration.ofSeconds(2), () -> {
+        // Operation that should complete within 2 seconds
+        Thread.sleep(1000);
+        return "Completed";
+    });
+    
+    // Assumption testing
+    assumeTrue(System.getProperty("os.name").contains("Windows"));
+    // Test only runs on Windows
+}
+
+// Dynamic Tests
+@TestFactory
+Collection<DynamicTest> dynamicTestsFromCollection() {
+    return Arrays.asList(
+        dynamicTest("Add test", () -> assertEquals(2, 1 + 1)),
+        dynamicTest("Multiply test", () -> assertEquals(4, 2 * 2)),
+        dynamicTest("Divide test", () -> assertEquals(2, 4 / 2))
+    );
+}
+
+@TestFactory
+Stream<DynamicTest> dynamicTestsFromStream() {
+    return Stream.of("hello", "world", "junit")
+        .map(str -> dynamicTest("Test " + str, () -> {
+            assertNotNull(str);
+            assertTrue(str.length() > 0);
+        }));
+}
+
+// Conditional Tests
+@Test
+@EnabledOnOs(OS.WINDOWS)
+void testOnWindows() {
+    // This test only runs on Windows
+}
+
+@Test
+@EnabledOnJre(JRE.JAVA_11)
+void testOnJava11() {
+    // This test only runs on Java 11
+}
+
+@Test
+@EnabledIfSystemProperty(named = "env", matches = "test")
+void testOnTestEnvironment() {
+    // This test only runs when system property env=test
+}
+
+@Test
+@EnabledIfEnvironmentVariable(named = "ENV", matches = "test")
+void testWithEnvironmentVariable() {
+    // This test only runs when environment variable ENV=test
+}
+
+// Custom Extension
+class TimingExtension implements BeforeTestExecutionCallback, AfterTestExecutionCallback {
+    
+    private static final Logger logger = Logger.getLogger(TimingExtension.class.getName());
+    
+    @Override
+    public void beforeTestExecution(ExtensionContext context) throws Exception {
+        getStore(context).put("start-time", System.currentTimeMillis());
+    }
+    
+    @Override
+    public void afterTestExecution(ExtensionContext context) throws Exception {
+        long startTime = getStore(context).remove("start-time", long.class);
+        long duration = System.currentTimeMillis() - startTime;
+        logger.info(() -> String.format("Method [%s] took %s ms.", 
+            context.getDisplayName(), duration));
+    }
+    
+    private Store getStore(ExtensionContext context) {
+        return context.getStore(Namespace.create(getClass(), context.getRequiredTestMethod()));
+    }
+}
+
+// Using Custom Extension
+@ExtendWith(TimingExtension.class)
+class TimedTest {
+    
+    @Test
+    void fastTest() throws InterruptedException {
+        Thread.sleep(100);
+    }
+    
+    @Test
+    void slowTest() throws InterruptedException {
+        Thread.sleep(500);
+    }
+}
+
+// Mock Integration (with Mockito)
+@ExtendWith(MockitoExtension.class)
+class ServiceTest {
+    
+    @Mock
+    private Repository repository;
+    
+    @InjectMocks
+    private Service service;
+    
+    @Test
+    void testServiceMethod() {
+        // Given
+        when(repository.findById(1L)).thenReturn(Optional.of(new Entity()));
+        
+        // When
+        Entity result = service.getEntity(1L);
+        
+        // Then
+        assertNotNull(result);
+        verify(repository).findById(1L);
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What is the latest version of JUnit?
+   a) JUnit 4
+   b) JUnit 5 (Jupiter)
+   c) JUnit 6
+   d) JUnit X
+   Answer: b) JUnit 5 (Jupiter)
+
+2. Which annotation marks a test method in JUnit 5?
+   a) @TestMethod
+   b) @Test
+   c) @UnitTest
+   d) @TestCase
+   Answer: b) @Test
+
+3. What does @BeforeEach do?
+   a) Runs once before all tests
+   b) Runs before each test method
+   c) Runs after each test
+   d) Runs once after all tests
+   Answer: b) Runs before each test method
+
+4. Which assertion checks if two values are equal?
+   a) assertEqual()
+   b) assertEquals()
+   c) checkEquals()
+   d) verifyEquals()
+   Answer: b) assertEquals()
+
+5. How do you test for exceptions in JUnit 5?
+   a) @ExpectedException
+   b) assertThrows()
+   c) try-catch block
+   d) @ThrowsException
+   Answer: b) assertThrows()
+
+6. What is the purpose of @DisplayName?
+   a) Display test results
+   b) Provide custom names for tests
+   c) Show test duration
+   d) Display test coverage
+   Answer: b) Provide custom names for tests
+
+7. Which annotation disables a test?
+   a) @Ignore
+   b) @Skip
+   c) @Disabled
+   d) @Exclude
+   Answer: c) @Disabled
+
+8. What does @ParameterizedTest enable?
+   a) Testing with multiple parameters
+   b) Testing with different data sets
+   c) Running same test with different inputs
+   d) All of the above
+   Answer: d) All of the above
+
+9. Which annotation provides test data from CSV?
+   a) @CsvData
+   b) @CsvSource
+   c) @CsvInput
+   d) @CsvTest
+   Answer: b) @CsvSource
+
+10. What is assertAll() used for?
+    a) Assert everything is true
+    b) Group multiple assertions
+    c) Assert all elements in collection
+    d) Assert all tests pass
+    Answer: b) Group multiple assertions
+
+11. What does @TestFactory create?
+    a) Test classes
+    b) Dynamic tests at runtime
+    c) Test methods
+    d) Test suites
+    Answer: b) Dynamic tests at runtime
+
+12. Which is the correct order of test lifecycle methods?
+    a) @BeforeAll → @BeforeEach → @Test → @AfterEach → @AfterAll
+    b) @BeforeEach → @BeforeAll → @Test → @AfterAll → @AfterEach
+    c) @Test → @BeforeAll → @BeforeEach → @AfterEach → @AfterAll
+    d) @BeforeAll → @Test → @BeforeEach → @AfterEach → @AfterAll
+    Answer: a) @BeforeAll → @BeforeEach → @Test → @AfterEach → @AfterAll
+
+13. What does @Nested allow?
+    a) Nested assertions
+    b) Hierarchical test organization
+    c) Nested loops in tests
+    d) Nested classes only
+    Answer: b) Hierarchical test organization
+
+14. Which assertion tests timeout conditions?
+    a) assertTimeout()
+    b) assertTime()
+    c) checkTimeout()
+    d) verifyTimeout()
+    Answer: a) assertTimeout()
+
+15. What is the purpose of assumptions in JUnit?
+    a) Assume test will pass
+    b) Conditional test execution based on environment
+    c) Assume values in assertions
+    d) Assume test order
+    Answer: b) Conditional test execution based on environment
+
+16. Which annotation runs test only on specific OS?
+    a) @EnabledOnOS
+    b) @EnabledOnOs
+    c) @RunOnOS
+    d) @OSSpecific
+    Answer: b) @EnabledOnOs
+
+17. What does @ExtendWith do?
+    a) Extends test class
+    b) Registers extensions for test
+    c) Extends test methods
+    d) Extends assertions
+    Answer: b) Registers extensions for test
+
+18. How do you provide custom test data in parameterized tests?
+    a) @MethodSource
+    b) @TestData
+    c) @DataProvider
+    d) @CustomSource
+    Answer: a) @MethodSource
+
+19. What is JUnit Platform?
+    a) Testing platform
+    b. Foundation for launching testing frameworks
+    c) IDE plugin
+    d) Build tool
+    Answer: b) Foundation for launching testing frameworks
+
+20. Which provides backward compatibility in JUnit 5?
+    a) JUnit Jupiter
+    b) JUnit Platform
+    c) JUnit Vintage
+    d) JUnit Legacy
+    Answer: c) JUnit Vintage
+
+21. What does assertTrue() check?
+    a) Value is true
+    b) Condition evaluates to true
+    c) String is "true"
+    d) Number is 1
+    Answer: b) Condition evaluates to true
+
+22. How do you group related assertions?
+    a) assertGroup()
+    b) assertAll()
+    c) groupAssert()
+    d) @Group
+    Answer: b) assertAll()
+
+23. What is the benefit of @DisplayName?
+    a. Better performance
+    b) More readable test reports
+    c) Faster execution
+    d) Better IDE integration
+    Answer: b) More readable test reports
+
+24. Can you have multiple @BeforeEach methods?
+    a) No, only one allowed
+    b) Yes, but only in nested classes
+    c) Yes, all will be executed
+    d) Only if they have different names
+    Answer: c) Yes, all will be executed
+
+25. What does DynamicTest.dynamicTest() create?
+    a) Static test
+    b) Dynamic test instance
+    c) Test class
+    d) Test method
+    Answer: b) Dynamic test instance
+
+====================================================================

@@ -1,0 +1,907 @@
+====================================================================
+                        MICROSERVICES ARCHITECTURE
+====================================================================
+
+INTRODUCTION:
+Microservices is an architectural approach where applications are built as a collection of small, independent services that communicate over well-defined APIs. Each service is responsible for a specific business capability and can be developed, deployed, and scaled independently.
+
+KEY CONCEPTS:
+
+1. MICROSERVICES PRINCIPLES:
+   - Single Responsibility Principle
+   - Decentralized governance and data management
+   - Independent deployment and scaling
+   - Technology diversity
+   - Fault isolation and resilience
+   - Communication through APIs
+
+2. SERVICE COMMUNICATION:
+   - Synchronous communication (HTTP/REST, gRPC)
+   - Asynchronous communication (Message queues, Events)
+   - Service mesh for communication management
+   - Load balancing and service discovery
+
+3. MICROSERVICES PATTERNS:
+   - API Gateway pattern
+   - Circuit Breaker pattern
+   - Saga pattern for distributed transactions
+   - Event Sourcing and CQRS
+   - Database per service
+   - Bulkhead pattern
+
+4. SPRING CLOUD ECOSYSTEM:
+   - Service Discovery (Eureka, Consul)
+   - Configuration Management (Config Server)
+   - Load Balancing (Ribbon, Spring Cloud LoadBalancer)
+   - Circuit Breaker (Hystrix, Resilience4j)
+   - API Gateway (Spring Cloud Gateway, Zuul)
+   - Distributed Tracing (Sleuth, Zipkin)
+
+5. DEPLOYMENT AND MONITORING:
+   - Containerization with Docker
+   - Orchestration with Kubernetes
+   - Monitoring and observability
+   - Centralized logging
+   - Health checks and metrics
+
+EXAMPLE CODE:
+
+// User Service - Microservice Example
+@RestController
+@RequestMapping("/api/users")
+@Slf4j
+public class UserController {
+    
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private OrderServiceClient orderServiceClient;
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDto> getUser(@PathVariable Long id) {
+        log.info("Fetching user with id: {}", id);
+        
+        try {
+            UserDto user = userService.findById(id);
+            return ResponseEntity.ok(user);
+        } catch (UserNotFoundException e) {
+            log.error("User not found: {}", id);
+            return ResponseEntity.notFound().build();
+        }
+    }
+    
+    @GetMapping("/{id}/profile")
+    public ResponseEntity<UserProfileDto> getUserProfile(@PathVariable Long id) {
+        log.info("Fetching user profile for id: {}", id);
+        
+        UserDto user = userService.findById(id);
+        List<OrderDto> orders = orderServiceClient.getOrdersByUserId(id);
+        
+        UserProfileDto profile = UserProfileDto.builder()
+            .user(user)
+            .orders(orders)
+            .totalOrders(orders.size())
+            .build();
+            
+        return ResponseEntity.ok(profile);
+    }
+    
+    @PostMapping
+    public ResponseEntity<UserDto> createUser(@Valid @RequestBody CreateUserRequest request) {
+        log.info("Creating new user: {}", request.getEmail());
+        
+        UserDto user = userService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(user);
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDto> updateUser(@PathVariable Long id, 
+                                            @Valid @RequestBody UpdateUserRequest request) {
+        log.info("Updating user: {}", id);
+        
+        UserDto user = userService.updateUser(id, request);
+        return ResponseEntity.ok(user);
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        log.info("Deleting user: {}", id);
+        
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+// Order Service Client - Service Communication
+@Component
+@FeignClient(name = "order-service", fallback = OrderServiceFallback.class)
+public interface OrderServiceClient {
+    
+    @GetMapping("/api/orders/user/{userId}")
+    List<OrderDto> getOrdersByUserId(@PathVariable("userId") Long userId);
+    
+    @GetMapping("/api/orders/{orderId}")
+    OrderDto getOrderById(@PathVariable("orderId") Long orderId);
+    
+    @PostMapping("/api/orders")
+    OrderDto createOrder(@RequestBody CreateOrderRequest request);
+    
+    @PutMapping("/api/orders/{orderId}/status")
+    OrderDto updateOrderStatus(@PathVariable("orderId") Long orderId, 
+                              @RequestParam OrderStatus status);
+}
+
+// Fallback Implementation for Circuit Breaker
+@Component
+@Slf4j
+public class OrderServiceFallback implements OrderServiceClient {
+    
+    @Override
+    public List<OrderDto> getOrdersByUserId(Long userId) {
+        log.warn("Order service unavailable, returning empty orders for user: {}", userId);
+        return Collections.emptyList();
+    }
+    
+    @Override
+    public OrderDto getOrderById(Long orderId) {
+        log.warn("Order service unavailable, returning null for order: {}", orderId);
+        return null;
+    }
+    
+    @Override
+    public OrderDto createOrder(CreateOrderRequest request) {
+        log.error("Order service unavailable, cannot create order");
+        throw new ServiceUnavailableException("Order service is currently unavailable");
+    }
+    
+    @Override
+    public OrderDto updateOrderStatus(Long orderId, OrderStatus status) {
+        log.error("Order service unavailable, cannot update order status");
+        throw new ServiceUnavailableException("Order service is currently unavailable");
+    }
+}
+
+// Service Discovery Configuration
+@SpringBootApplication
+@EnableEurekaClient
+@EnableFeignClients
+@EnableCircuitBreaker
+public class UserServiceApplication {
+    
+    public static void main(String[] args) {
+        SpringApplication.run(UserServiceApplication.class, args);
+    }
+    
+    @Bean
+    @LoadBalanced
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+    
+    @Bean
+    public WebClient.Builder webClientBuilder() {
+        return WebClient.builder();
+    }
+}
+
+// Configuration Properties
+@ConfigurationProperties(prefix = "app")
+@Data
+public class AppProperties {
+    private String name;
+    private String version;
+    private Security security = new Security();
+    private Database database = new Database();
+    
+    @Data
+    public static class Security {
+        private String jwtSecret;
+        private long jwtExpiration;
+        private boolean enableAuth;
+    }
+    
+    @Data
+    public static class Database {
+        private int maxConnections;
+        private int connectionTimeout;
+        private boolean enableMetrics;
+    }
+}
+
+// Health Check Implementation
+@Component
+public class UserServiceHealthIndicator implements HealthIndicator {
+    
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private OrderServiceClient orderServiceClient;
+    
+    @Override
+    public Health health() {
+        try {
+            // Check database connectivity
+            long userCount = userService.getUserCount();
+            
+            // Check downstream service
+            boolean orderServiceHealthy = checkOrderService();
+            
+            if (orderServiceHealthy) {
+                return Health.up()
+                    .withDetail("userCount", userCount)
+                    .withDetail("orderService", "UP")
+                    .build();
+            } else {
+                return Health.up()
+                    .withDetail("userCount", userCount)
+                    .withDetail("orderService", "DOWN")
+                    .withDetail("message", "Order service is unavailable but user service is operational")
+                    .build();
+            }
+            
+        } catch (Exception e) {
+            return Health.down()
+                .withDetail("error", e.getMessage())
+                .build();
+        }
+    }
+    
+    private boolean checkOrderService() {
+        try {
+            // Simple health check - try to get orders for a test user
+            orderServiceClient.getOrdersByUserId(-1L);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+}
+
+// Circuit Breaker with Resilience4j
+@Service
+@Slf4j
+public class OrderService {
+    
+    @Autowired
+    private OrderServiceClient orderServiceClient;
+    
+    @CircuitBreaker(name = "order-service", fallbackMethod = "getOrdersFallback")
+    @Retry(name = "order-service")
+    @TimeLimiter(name = "order-service")
+    public CompletableFuture<List<OrderDto>> getOrdersAsync(Long userId) {
+        log.info("Fetching orders for user: {}", userId);
+        return CompletableFuture.supplyAsync(() -> orderServiceClient.getOrdersByUserId(userId));
+    }
+    
+    public CompletableFuture<List<OrderDto>> getOrdersFallback(Long userId, Exception e) {
+        log.warn("Fallback triggered for user orders: {}, error: {}", userId, e.getMessage());
+        return CompletableFuture.completedFuture(Collections.emptyList());
+    }
+    
+    @CircuitBreaker(name = "order-service")
+    @Bulkhead(name = "order-service", type = Bulkhead.Type.THREAD_POOL)
+    public OrderDto createOrder(CreateOrderRequest request) {
+        log.info("Creating order for user: {}", request.getUserId());
+        return orderServiceClient.createOrder(request);
+    }
+}
+
+// Event Publishing for Microservices Communication
+@Service
+@Slf4j
+public class UserEventPublisher {
+    
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+    
+    @Autowired
+    private KafkaTemplate<String, Object> kafkaTemplate;
+    
+    public void publishUserCreated(UserDto user) {
+        // Local event publishing
+        UserCreatedEvent localEvent = new UserCreatedEvent(this, user);
+        eventPublisher.publishEvent(localEvent);
+        
+        // Kafka event publishing
+        UserCreatedEventDto kafkaEvent = UserCreatedEventDto.builder()
+            .userId(user.getId())
+            .email(user.getEmail())
+            .firstName(user.getFirstName())
+            .lastName(user.getLastName())
+            .timestamp(Instant.now())
+            .build();
+            
+        kafkaTemplate.send("user-events", user.getId().toString(), kafkaEvent);
+        log.info("Published user created event: {}", user.getId());
+    }
+    
+    public void publishUserUpdated(UserDto user) {
+        UserUpdatedEventDto event = UserUpdatedEventDto.builder()
+            .userId(user.getId())
+            .email(user.getEmail())
+            .firstName(user.getFirstName())
+            .lastName(user.getLastName())
+            .timestamp(Instant.now())
+            .build();
+            
+        kafkaTemplate.send("user-events", user.getId().toString(), event);
+        log.info("Published user updated event: {}", user.getId());
+    }
+    
+    public void publishUserDeleted(Long userId) {
+        UserDeletedEventDto event = UserDeletedEventDto.builder()
+            .userId(userId)
+            .timestamp(Instant.now())
+            .build();
+            
+        kafkaTemplate.send("user-events", userId.toString(), event);
+        log.info("Published user deleted event: {}", userId);
+    }
+}
+
+// Event Listener in Another Service
+@Component
+@Slf4j
+public class UserEventListener {
+    
+    @Autowired
+    private NotificationService notificationService;
+    
+    @KafkaListener(topics = "user-events", groupId = "notification-service")
+    public void handleUserEvent(String key, Object event) {
+        log.info("Received user event: {}", event);
+        
+        if (event instanceof UserCreatedEventDto) {
+            handleUserCreated((UserCreatedEventDto) event);
+        } else if (event instanceof UserUpdatedEventDto) {
+            handleUserUpdated((UserUpdatedEventDto) event);
+        } else if (event instanceof UserDeletedEventDto) {
+            handleUserDeleted((UserDeletedEventDto) event);
+        }
+    }
+    
+    private void handleUserCreated(UserCreatedEventDto event) {
+        // Send welcome email
+        notificationService.sendWelcomeEmail(event.getEmail(), event.getFirstName());
+        log.info("Sent welcome email for user: {}", event.getUserId());
+    }
+    
+    private void handleUserUpdated(UserUpdatedEventDto event) {
+        // Send profile update confirmation
+        notificationService.sendProfileUpdateNotification(event.getEmail());
+        log.info("Sent profile update notification for user: {}", event.getUserId());
+    }
+    
+    private void handleUserDeleted(UserDeletedEventDto event) {
+        // Clean up user-related data
+        notificationService.cleanupUserNotifications(event.getUserId());
+        log.info("Cleaned up notifications for deleted user: {}", event.getUserId());
+    }
+}
+
+// API Gateway Configuration with Spring Cloud Gateway
+@RestController
+public class GatewayController {
+    
+    @GetMapping("/api/health")
+    public ResponseEntity<Map<String, String>> health() {
+        Map<String, String> status = new HashMap<>();
+        status.put("status", "UP");
+        status.put("timestamp", Instant.now().toString());
+        status.put("service", "api-gateway");
+        return ResponseEntity.ok(status);
+    }
+}
+
+@Configuration
+public class GatewayConfig {
+    
+    @Bean
+    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+        return builder.routes()
+            .route("user-service", r -> r.path("/api/users/**")
+                .filters(f -> f
+                    .addRequestHeader("X-Gateway", "Spring-Cloud-Gateway")
+                    .addResponseHeader("X-Response-Time", String.valueOf(System.currentTimeMillis()))
+                    .circuitBreaker(c -> c.setName("user-service-cb").setFallbackUri("forward:/fallback/users")))
+                .uri("lb://user-service"))
+            
+            .route("order-service", r -> r.path("/api/orders/**")
+                .filters(f -> f
+                    .addRequestHeader("X-Gateway", "Spring-Cloud-Gateway")
+                    .retry(c -> c.setRetries(3).setSeries(HttpStatus.Series.SERVER_ERROR)))
+                .uri("lb://order-service"))
+            
+            .route("notification-service", r -> r.path("/api/notifications/**")
+                .filters(f -> f
+                    .requestRateLimiter(c -> c
+                        .setRateLimiter(redisRateLimiter())
+                        .setKeyResolver(userKeyResolver())))
+                .uri("lb://notification-service"))
+            .build();
+    }
+    
+    @Bean
+    public RedisRateLimiter redisRateLimiter() {
+        return new RedisRateLimiter(10, 20); // 10 requests per second, burst of 20
+    }
+    
+    @Bean
+    public KeyResolver userKeyResolver() {
+        return exchange -> exchange.getRequest().getHeaders().getFirst("X-User-ID") != null 
+            ? Mono.just(exchange.getRequest().getHeaders().getFirst("X-User-ID"))
+            : Mono.just("anonymous");
+    }
+}
+
+// Distributed Tracing Configuration
+@Configuration
+public class TracingConfiguration {
+    
+    @Bean
+    public Sender sender() {
+        return OkHttpSender.create("http://zipkin:9411/api/v2/spans");
+    }
+    
+    @Bean
+    public AsyncReporter<Span> spanReporter() {
+        return AsyncReporter.create(sender());
+    }
+    
+    @Bean
+    public Tracing tracing() {
+        return Tracing.newBuilder()
+            .localServiceName("user-service")
+            .spanReporter(spanReporter())
+            .sampler(Sampler.create(1.0f)) // Sample all traces
+            .build();
+    }
+}
+
+// Centralized Configuration
+@RefreshScope
+@RestController
+@RequestMapping("/api/config")
+public class ConfigController {
+    
+    @Value("${app.message:Default Message}")
+    private String message;
+    
+    @Value("${app.version:1.0.0}")
+    private String version;
+    
+    @Autowired
+    private AppProperties appProperties;
+    
+    @GetMapping("/message")
+    public ResponseEntity<String> getMessage() {
+        return ResponseEntity.ok(message);
+    }
+    
+    @GetMapping("/version")
+    public ResponseEntity<String> getVersion() {
+        return ResponseEntity.ok(version);
+    }
+    
+    @GetMapping("/properties")
+    public ResponseEntity<AppProperties> getProperties() {
+        return ResponseEntity.ok(appProperties);
+    }
+}
+
+// Security Configuration for Microservices
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+public class SecurityConfig {
+    
+    @Autowired
+    private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    
+    @Autowired
+    private JwtRequestFilter jwtRequestFilter;
+    
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+    
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+    
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http.csrf().disable()
+            .authorizeHttpRequests(authz -> authz
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/health").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/users/*/profile").hasRole("USER")
+                .requestMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/users/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
+                .anyRequest().authenticated())
+            .exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint)
+            .and()
+            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+        
+        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+        
+        return http.build();
+    }
+}
+
+// Monitoring and Metrics
+@RestController
+@RequestMapping("/actuator/metrics")
+public class CustomMetricsController {
+    
+    private final MeterRegistry meterRegistry;
+    private final Counter userCreationCounter;
+    private final Timer userServiceTimer;
+    
+    public CustomMetricsController(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+        this.userCreationCounter = Counter.builder("users.created")
+            .description("Number of users created")
+            .register(meterRegistry);
+        this.userServiceTimer = Timer.builder("user.service.response.time")
+            .description("User service response time")
+            .register(meterRegistry);
+    }
+    
+    @GetMapping("/custom")
+    public ResponseEntity<Map<String, Object>> getCustomMetrics() {
+        Map<String, Object> metrics = new HashMap<>();
+        metrics.put("users.created.count", userCreationCounter.count());
+        metrics.put("user.service.avg.response.time", userServiceTimer.mean(TimeUnit.MILLISECONDS));
+        metrics.put("jvm.memory.used", meterRegistry.get("jvm.memory.used").gauge().value());
+        metrics.put("jvm.threads.live", meterRegistry.get("jvm.threads.live").gauge().value());
+        
+        return ResponseEntity.ok(metrics);
+    }
+    
+    public void incrementUserCreated() {
+        userCreationCounter.increment();
+    }
+    
+    public Timer.Sample startTimer() {
+        return Timer.start(meterRegistry);
+    }
+    
+    public void recordTimer(Timer.Sample sample) {
+        sample.stop(userServiceTimer);
+    }
+}
+
+// Docker Configuration
+// Dockerfile
+/*
+FROM openjdk:17-jdk-alpine
+VOLUME /tmp
+COPY target/user-service-1.0.0.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
+*/
+
+// Docker Compose for Local Development
+/*
+version: '3.8'
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  zipkin:
+    image: openzipkin/zipkin
+    ports:
+      - "9411:9411"
+
+  eureka-server:
+    image: user-service/eureka-server:latest
+    ports:
+      - "8761:8761"
+
+  config-server:
+    image: user-service/config-server:latest
+    ports:
+      - "8888:8888"
+    depends_on:
+      - eureka-server
+
+  user-service:
+    image: user-service/user-service:latest
+    ports:
+      - "8081:8080"
+    depends_on:
+      - eureka-server
+      - config-server
+      - kafka
+      - redis
+    environment:
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING_CONFIG_URI: http://config-server:8888
+
+  order-service:
+    image: user-service/order-service:latest
+    ports:
+      - "8082:8080"
+    depends_on:
+      - eureka-server
+      - config-server
+      - kafka
+    environment:
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING_CONFIG_URI: http://config-server:8888
+
+  api-gateway:
+    image: user-service/api-gateway:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka-server
+      - user-service
+      - order-service
+    environment:
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka
+*/
+
+// Integration Testing for Microservices
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@TestPropertySource(properties = {
+    "spring.cloud.config.enabled=false",
+    "eureka.client.enabled=false"
+})
+public class UserServiceIntegrationTest {
+    
+    @Autowired
+    private TestRestTemplate restTemplate;
+    
+    @MockBean
+    private OrderServiceClient orderServiceClient;
+    
+    @Test
+    public void testCreateUser() {
+        // Given
+        CreateUserRequest request = CreateUserRequest.builder()
+            .email("test@example.com")
+            .firstName("Test")
+            .lastName("User")
+            .password("password123")
+            .build();
+        
+        // When
+        ResponseEntity<UserDto> response = restTemplate.postForEntity(
+            "/api/users", request, UserDto.class);
+        
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getEmail()).isEqualTo("test@example.com");
+    }
+    
+    @Test
+    public void testGetUserProfile() {
+        // Given
+        Long userId = 1L;
+        List<OrderDto> mockOrders = Arrays.asList(
+            OrderDto.builder().id(1L).userId(userId).status(OrderStatus.COMPLETED).build(),
+            OrderDto.builder().id(2L).userId(userId).status(OrderStatus.PENDING).build()
+        );
+        
+        when(orderServiceClient.getOrdersByUserId(userId)).thenReturn(mockOrders);
+        
+        // When
+        ResponseEntity<UserProfileDto> response = restTemplate.getForEntity(
+            "/api/users/" + userId + "/profile", UserProfileDto.class);
+        
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getTotalOrders()).isEqualTo(2);
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What is the main principle of microservices architecture?
+   a) Monolithic deployment
+   b) Single responsibility and independence
+   c) Shared database
+   d) Centralized governance
+   Answer: b) Single responsibility and independence
+
+2. Which Spring Cloud component provides service discovery?
+   a) Spring Cloud Config
+   b) Spring Cloud Gateway
+   c) Eureka
+   d) Hystrix
+   Answer: c) Eureka
+
+3. What is the purpose of an API Gateway?
+   a) Database access
+   b) Single entry point for all client requests
+   c) Service discovery
+   d) Configuration management
+   Answer: b) Single entry point for all client requests
+
+4. Which annotation is used for Feign clients?
+   a) @RestClient
+   b) @ServiceClient
+   c) @FeignClient
+   d) @HttpClient
+   Answer: c) @FeignClient
+
+5. What does @LoadBalanced annotation do?
+   a) Balances server load
+   b) Enables client-side load balancing
+   c) Distributes database load
+   d) Balances memory usage
+   Answer: b) Enables client-side load balancing
+
+6. Which pattern prevents cascade failures in microservices?
+   a) Saga pattern
+   b) Circuit Breaker pattern
+   c) Gateway pattern
+   d) Observer pattern
+   Answer: b) Circuit Breaker pattern
+
+7. What is the fallback method used for?
+   a) Primary service method
+   b) Error handling
+   c) Method called when circuit is open
+   d) Database fallback
+   Answer: c) Method called when circuit is open
+
+8. Which Spring Cloud component manages configuration?
+   a) Config Server
+   b) Eureka Server
+   c) Gateway Server
+   d) Registry Server
+   Answer: a) Config Server
+
+9. What does @RefreshScope annotation do?
+   a) Refreshes the application
+   b) Reloads configuration properties
+   c) Restarts the service
+   d) Updates the scope
+   Answer: b) Reloads configuration properties
+
+10. Which messaging pattern is best for microservices communication?
+    a) Synchronous only
+    b) Asynchronous only
+    c) Both synchronous and asynchronous
+    d) Database communication
+    Answer: c) Both synchronous and asynchronous
+
+11. What is the Database per Service pattern?
+    a) One database for all services
+    b) Each service has its own database
+    c) Shared database schema
+    d) Centralized database
+    Answer: b) Each service has its own database
+
+12. Which tool is used for distributed tracing?
+    a) Eureka
+    b) Zipkin
+    c) Hystrix
+    d) Ribbon
+    Answer: b) Zipkin
+
+13. What does Bulkhead pattern provide?
+    a) Resource isolation
+    b) Load balancing
+    c) Service discovery
+    d) Configuration management
+    Answer: a) Resource isolation
+
+14. Which annotation enables Hystrix circuit breaker?
+    a) @EnableHystrix
+    b) @EnableCircuitBreaker
+    c) @CircuitBreaker
+    d) @HystrixCommand
+    Answer: b) @EnableCircuitBreaker
+
+15. What is Event Sourcing?
+    a) Source code events
+    b) Storing state as sequence of events
+    c) Event-driven programming
+    d) Source event handling
+    Answer: b) Storing state as sequence of events
+
+16. Which component provides rate limiting in Spring Cloud Gateway?
+    a) RateLimiter
+    b) RedisRateLimiter
+    c) GatewayRateLimiter
+    d) RequestRateLimiter
+    Answer: b) RedisRateLimiter
+
+17. What is CQRS pattern?
+    a) Command Query Separation
+    b) Command Query Responsibility Segregation
+    c) Configuration Query Response System
+    d) Centralized Query Response Service
+    Answer: b) Command Query Responsibility Segregation
+
+18. Which health check endpoint is standard in Spring Boot?
+    a) /health
+    b) /actuator/health
+    c) /status
+    d) /check
+    Answer: b) /actuator/health
+
+19. What does Saga pattern handle?
+    a) Service discovery
+    b) Distributed transactions
+    c) Load balancing
+    d) Configuration management
+    Answer: b) Distributed transactions
+
+20. Which container orchestration platform is commonly used?
+    a) Docker
+    b) Kubernetes
+    c) Maven
+    d) Gradle
+    Answer: b) Kubernetes
+
+21. What is the purpose of service mesh?
+    a) Service discovery
+    b) Communication management between services
+    c) Configuration management
+    d) Database access
+    Answer: b) Communication management between services
+
+22. Which annotation is used for Kafka listeners?
+    a) @MessageListener
+    b) @KafkaListener
+    c) @EventListener
+    d) @StreamListener
+    Answer: b) @KafkaListener
+
+23. What does @EnableEurekaClient do?
+    a) Creates Eureka server
+    b) Registers service with Eureka
+    c) Enables Eureka configuration
+    d) Starts Eureka client
+    Answer: b) Registers service with Eureka
+
+24. Which testing annotation disables service discovery for tests?
+    a) eureka.client.enabled=false
+    b) @DisableEureka
+    c) @MockEureka
+    d) @TestEureka
+    Answer: a) eureka.client.enabled=false
+
+25. What is the main benefit of microservices?
+    a) Simple deployment
+    b) Independent scaling and deployment
+    c) Shared resources
+    d) Single technology stack
+    Answer: b) Independent scaling and deployment
+
+====================================================================

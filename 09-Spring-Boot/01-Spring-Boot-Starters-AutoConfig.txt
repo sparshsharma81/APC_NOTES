@@ -1,0 +1,546 @@
+====================================================================
+                        SPRING BOOT: STARTERS AND AUTO-CONFIGURATION
+====================================================================
+
+INTRODUCTION:
+Spring Boot is a framework built on top of Spring Framework that simplifies the development of production-ready applications. It provides auto-configuration, embedded servers, and starter dependencies to reduce boilerplate code and configuration.
+
+KEY CONCEPTS:
+
+1. SPRING BOOT STARTERS:
+   - Pre-configured dependency descriptors
+   - Provide common dependencies for specific functionality
+   - Follow naming convention: spring-boot-starter-*
+   - Reduce dependency management complexity
+   - Include transitive dependencies automatically
+
+2. AUTO-CONFIGURATION:
+   - Automatically configures beans based on classpath
+   - Uses conditional annotations
+   - Can be overridden by user configuration
+   - Reduces boilerplate configuration code
+   - Based on "convention over configuration"
+
+3. EMBEDDED SERVERS:
+   - Tomcat (default)
+   - Jetty
+   - Undertow
+   - No need for external server deployment
+   - Simplified deployment as executable JAR
+
+4. SPRING BOOT FEATURES:
+   - Standalone applications
+   - Opinionated defaults
+   - Production-ready features
+   - No code generation
+   - No XML configuration required
+
+5. ACTUATOR:
+   - Production-ready features
+   - Health checks, metrics, monitoring
+   - HTTP endpoints for management
+   - Customizable endpoints
+
+EXAMPLE CODE:
+
+// Main Application Class
+@SpringBootApplication  // Combines @Configuration, @EnableAutoConfiguration, @ComponentScan
+public class MySpringBootApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(MySpringBootApplication.class, args);
+    }
+}
+
+// pom.xml dependencies
+/*
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.1.0</version>
+    <relativePath/>
+</parent>
+
+<dependencies>
+    <!-- Web starter - includes Spring MVC, Tomcat, Jackson -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    
+    <!-- Data JPA starter - includes Hibernate, Spring Data JPA -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    
+    <!-- Security starter -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+    
+    <!-- Test starter -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+        <scope>test</scope>
+    </dependency>
+    
+    <!-- Actuator for monitoring -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+</dependencies>
+*/
+
+// REST Controller Example
+@RestController
+@RequestMapping("/api")
+public class UserController {
+    
+    @Autowired
+    private UserService userService;
+    
+    @GetMapping("/users")
+    public List<User> getAllUsers() {
+        return userService.findAll();
+    }
+    
+    @GetMapping("/users/{id}")
+    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+        Optional<User> user = userService.findById(id);
+        return user.map(ResponseEntity::ok)
+                  .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @PostMapping("/users")
+    public ResponseEntity<User> createUser(@RequestBody @Valid User user) {
+        User savedUser = userService.save(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
+    }
+}
+
+// Entity with JPA
+@Entity
+@Table(name = "users")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false)
+    private String name;
+    
+    @Column(unique = true, nullable = false)
+    private String email;
+    
+    // Constructors, getters, setters
+    public User() {}
+    
+    public User(String name, String email) {
+        this.name = name;
+        this.email = email;
+    }
+    
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+}
+
+// Repository Interface
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByEmail(String email);
+    List<User> findByNameContaining(String name);
+}
+
+// Service Layer
+@Service
+@Transactional
+public class UserService {
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    public List<User> findAll() {
+        return userRepository.findAll();
+    }
+    
+    public Optional<User> findById(Long id) {
+        return userRepository.findById(id);
+    }
+    
+    public User save(User user) {
+        return userRepository.save(user);
+    }
+    
+    public void deleteById(Long id) {
+        userRepository.deleteById(id);
+    }
+    
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+}
+
+// Configuration Properties
+@ConfigurationProperties(prefix = "app")
+@Component
+public class AppProperties {
+    private String name;
+    private String version;
+    private Database database = new Database();
+    
+    // Getters and Setters
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    
+    public String getVersion() { return version; }
+    public void setVersion(String version) { this.version = version; }
+    
+    public Database getDatabase() { return database; }
+    public void setDatabase(Database database) { this.database = database; }
+    
+    public static class Database {
+        private String url;
+        private String username;
+        private String password;
+        
+        // Getters and Setters
+        public String getUrl() { return url; }
+        public void setUrl(String url) { this.url = url; }
+        
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
+        
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+    }
+}
+
+// application.yml configuration
+/*
+app:
+  name: My Spring Boot App
+  version: 1.0.0
+  database:
+    url: jdbc:mysql://localhost:3306/mydb
+    username: user
+    password: password
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driverClassName: org.h2.Driver
+    username: sa
+    password: 
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  h2:
+    console:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+*/
+
+// Custom Auto-configuration
+@Configuration
+@ConditionalOnClass(DataSource.class)
+@ConditionalOnProperty(name = "app.database.enabled", havingValue = "true")
+@EnableConfigurationProperties(AppProperties.class)
+public class DatabaseAutoConfiguration {
+    
+    @Bean
+    @ConditionalOnMissingBean
+    public DataSource dataSource(AppProperties properties) {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(properties.getDatabase().getUrl());
+        config.setUsername(properties.getDatabase().getUsername());
+        config.setPassword(properties.getDatabase().getPassword());
+        return new HikariDataSource(config);
+    }
+}
+
+// Custom Actuator Endpoint
+@Component
+@Endpoint(id = "custom")
+public class CustomEndpoint {
+    
+    @ReadOperation
+    public Map<String, Object> customInfo() {
+        Map<String, Object> info = new HashMap<>();
+        info.put("status", "UP");
+        info.put("customProperty", "customValue");
+        info.put("timestamp", Instant.now());
+        return info;
+    }
+    
+    @WriteOperation
+    public void updateCustomProperty(@Selector String key, String value) {
+        // Update custom property
+        System.out.println("Updated " + key + " to " + value);
+    }
+}
+
+// Testing with Spring Boot
+@SpringBootTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+class UserServiceTest {
+    
+    @Autowired
+    private UserService userService;
+    
+    @MockBean
+    private UserRepository userRepository;
+    
+    @Test
+    void testFindById() {
+        // Given
+        User user = new User("John Doe", "john@example.com");
+        user.setId(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        
+        // When
+        Optional<User> result = userService.findById(1L);
+        
+        // Then
+        assertTrue(result.isPresent());
+        assertEquals("John Doe", result.get().getName());
+    }
+}
+
+// Integration Test
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureTestDatabase
+class UserControllerIntegrationTest {
+    
+    @Autowired
+    private TestRestTemplate restTemplate;
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Test
+    void testCreateAndRetrieveUser() {
+        // Create user
+        User user = new User("Jane Doe", "jane@example.com");
+        ResponseEntity<User> createResponse = restTemplate.postForEntity("/api/users", user, User.class);
+        
+        assertEquals(HttpStatus.CREATED, createResponse.getStatusCode());
+        assertNotNull(createResponse.getBody().getId());
+        
+        // Retrieve user
+        ResponseEntity<User> getResponse = restTemplate.getForEntity(
+            "/api/users/" + createResponse.getBody().getId(), User.class);
+        
+        assertEquals(HttpStatus.OK, getResponse.getStatusCode());
+        assertEquals("Jane Doe", getResponse.getBody().getName());
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. What does @SpringBootApplication annotation combine?
+   a) @Configuration, @ComponentScan
+   b) @Configuration, @EnableAutoConfiguration, @ComponentScan
+   c) @Service, @Repository, @Controller
+   d) @Bean, @Component, @Autowired
+   Answer: b) @Configuration, @EnableAutoConfiguration, @ComponentScan
+
+2. What is the default embedded server in Spring Boot?
+   a) Jetty
+   b) Undertow
+   c) Tomcat
+   d) GlassFish
+   Answer: c) Tomcat
+
+3. What is the naming convention for Spring Boot starters?
+   a) spring-starter-*
+   b) spring-boot-starter-*
+   c) starter-spring-boot-*
+   d) boot-starter-*
+   Answer: b) spring-boot-starter-*
+
+4. Which starter is used for web applications?
+   a) spring-boot-starter-web
+   b) spring-boot-starter-mvc
+   c) spring-boot-starter-http
+   d) spring-boot-starter-rest
+   Answer: a) spring-boot-starter-web
+
+5. What does auto-configuration do?
+   a) Automatically writes code
+   b) Automatically configures beans based on classpath
+   c) Automatically deploys application
+   d) Automatically tests application
+   Answer: b) Automatically configures beans based on classpath
+
+6. Which annotation enables auto-configuration?
+   a) @AutoConfig
+   b) @EnableAutoConfiguration
+   c) @SpringBootConfiguration
+   d) @AutoConfiguration
+   Answer: b) @EnableAutoConfiguration
+
+7. What is the purpose of Spring Boot Actuator?
+   a) Application security
+   b) Database access
+   c) Production-ready monitoring features
+   d) Web development
+   Answer: c) Production-ready monitoring features
+
+8. Which file is used for Spring Boot configuration?
+   a) application.properties
+   b) application.yml
+   c) Both a and b
+   d) config.properties
+   Answer: c) Both a and b
+
+9. What does @ConfigurationProperties do?
+   a) Creates configuration files
+   b) Binds external properties to Java objects
+   c) Validates properties
+   d) Encrypts properties
+   Answer: b) Binds external properties to Java objects
+
+10. How do you run a Spring Boot application?
+    a) Deploy to server
+    b) Run main method with SpringApplication.run()
+    c) Use servlet container
+    d. Compile to native code
+    Answer: b) Run main method with SpringApplication.run()
+
+11. Which annotation is used for REST controllers?
+    a) @Controller
+    b) @RestController
+    c) @WebController
+    d) @HttpController
+    Answer: b) @RestController
+
+12. What is the default port for Spring Boot applications?
+    a) 8080
+    b) 8088
+    c) 9090
+    d) 3000
+    Answer: a) 8080
+
+13. Which starter includes Spring Data JPA?
+    a) spring-boot-starter-jpa
+    b) spring-boot-starter-data-jpa
+    c) spring-boot-starter-hibernate
+    d) spring-boot-starter-database
+    Answer: b) spring-boot-starter-data-jpa
+
+14. What does @ConditionalOnClass do?
+    a) Creates conditional class
+    b) Configuration applies only if class is present on classpath
+    c) Checks class validity
+    d) Conditional compilation
+    Answer: b) Configuration applies only if class is present on classpath
+
+15. Which testing annotation loads complete Spring Boot context?
+    a) @Test
+    b) @SpringBootTest
+    c) @WebMvcTest
+    d) @DataJpaTest
+    Answer: b) @SpringBootTest
+
+16. What is the benefit of Spring Boot starters?
+    a) Faster execution
+    b) Reduced dependency management complexity
+    c) Better security
+    d) Smaller file size
+    Answer: b) Reduced dependency management complexity
+
+17. How can you exclude auto-configuration classes?
+    a) @ExcludeAutoConfiguration
+    b) @SpringBootApplication(exclude = {})
+    c) @DisableAutoConfiguration
+    d) Both a and b
+    Answer: b) @SpringBootApplication(exclude = {})
+
+18. Which provides more features: application.properties or application.yml?
+    a) application.properties
+    b) application.yml
+    c) Both are functionally equivalent
+    d) Neither
+    Answer: c) Both are functionally equivalent
+
+19. What is the purpose of @MockBean?
+    a) Create mock objects
+    b) Add mock beans to Spring context for testing
+    c) Mock database
+    d) Mock web requests
+    Answer: b) Add mock beans to Spring context for testing
+
+20. Which Actuator endpoint provides application health information?
+    a) /info
+    b) /health
+    c) /status
+    d) /metrics
+    Answer: b) /health
+
+21. What is DevTools in Spring Boot?
+    a) Development database
+    b) Development server
+    c) Development productivity tools with hot reloading
+    d) Development testing tools
+    Answer: c) Development productivity tools with hot reloading
+
+22. How do you create a custom starter?
+    a) Extend existing starter
+    b) Create auto-configuration and META-INF/spring.factories
+    c) Use Spring Boot CLI
+    d) Implement StarterInterface
+    Answer: b) Create auto-configuration and META-INF/spring.factories
+
+23. What is the purpose of @EnableConfigurationProperties?
+    a) Enable all properties
+    b. Enable specific @ConfigurationProperties classes
+    c) Enable property validation
+    d) Enable property encryption
+    Answer: b) Enable specific @ConfigurationProperties classes
+
+24. Which profile is active by default in Spring Boot?
+    a) development
+    b) production
+    c) default
+    d) None
+    Answer: c) default
+
+25. What format does Spring Boot use for logging by default?
+    a) XML
+    b) JSON
+    c) Logback with console output
+    d) Plain text
+    Answer: c) Logback with console output
+
+====================================================================

@@ -1,0 +1,856 @@
+====================================================================
+                      SPRING DATA MONGODB
+====================================================================
+
+INTRODUCTION:
+Spring Data MongoDB provides integration with the MongoDB document database. It offers a familiar Spring-based programming model with automatic repository implementations, custom object-mapping abstractions, and support for both traditional and reactive programming models.
+
+KEY CONCEPTS:
+
+1. MONGODB DOCUMENT MAPPING:
+   - @Document annotation for collections
+   - @Id for document identifiers
+   - @Field for field mapping
+   - @Indexed for creating indexes
+   - @DBRef for document references
+
+2. MONGO REPOSITORIES:
+   - MongoRepository interface
+   - Custom query methods
+   - JSON-based queries with @Query
+   - Aggregation framework support
+   - Geospatial queries
+
+3. MONGO TEMPLATE:
+   - Low-level MongoDB operations
+   - Custom queries and operations
+   - Aggregation pipeline operations
+   - Index management
+   - GridFS support
+
+4. REACTIVE MONGODB:
+   - ReactiveMongoRepository
+   - Reactive streams support
+   - Non-blocking operations
+   - Flux and Mono return types
+
+5. MONGODB CONFIGURATION:
+   - Connection configuration
+   - Authentication setup
+   - Custom converters
+   - Validation configuration
+
+EXAMPLE CODE:
+
+// MongoDB Document Entity
+@Document(collection = "users")
+public class User {
+    
+    @Id
+    private String id;
+    
+    @Indexed(unique = true)
+    private String username;
+    
+    @Field("email_address")
+    private String email;
+    
+    private String firstName;
+    private String lastName;
+    
+    @Field("created_at")
+    private LocalDateTime createdAt;
+    
+    @Field("updated_at")
+    private LocalDateTime updatedAt;
+    
+    private UserStatus status;
+    
+    @Indexed
+    private List<String> roles;
+    
+    private Address address;
+    
+    @DBRef
+    private List<Order> orders;
+    
+    private Map<String, Object> metadata;
+    
+    // Constructors
+    public User() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+        this.roles = new ArrayList<>();
+        this.metadata = new HashMap<>();
+    }
+    
+    public User(String username, String email, String firstName, String lastName) {
+        this();
+        this.username = username;
+        this.email = email;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.status = UserStatus.ACTIVE;
+    }
+    
+    // Getters and setters...
+}
+
+// Embedded Document
+public class Address {
+    private String street;
+    private String city;
+    private String state;
+    private String zipCode;
+    private String country;
+    
+    @Indexed("2dsphere")
+    private GeoJsonPoint location;
+    
+    // Constructors, getters, and setters...
+}
+
+// User Status Enum
+public enum UserStatus {
+    ACTIVE, INACTIVE, SUSPENDED, PENDING_VERIFICATION
+}
+
+// Order Document
+@Document(collection = "orders")
+public class Order {
+    
+    @Id
+    private String id;
+    
+    @Field("order_number")
+    @Indexed(unique = true)
+    private String orderNumber;
+    
+    @DBRef
+    private User user;
+    
+    private List<OrderItem> items;
+    
+    private BigDecimal totalAmount;
+    
+    private OrderStatus status;
+    
+    @Field("order_date")
+    private LocalDateTime orderDate;
+    
+    @Field("delivery_date")
+    private LocalDateTime deliveryDate;
+    
+    private Address shippingAddress;
+    
+    // Constructors, getters, and setters...
+}
+
+// Order Item Embedded Document
+public class OrderItem {
+    private String productId;
+    private String productName;
+    private Integer quantity;
+    private BigDecimal price;
+    private BigDecimal totalPrice;
+    
+    // Constructors, getters, and setters...
+}
+
+// Order Status Enum
+public enum OrderStatus {
+    PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED
+}
+
+// User Repository
+public interface UserRepository extends MongoRepository<User, String> {
+    
+    // Derived query methods
+    Optional<User> findByUsername(String username);
+    Optional<User> findByEmail(String email);
+    List<User> findByStatus(UserStatus status);
+    List<User> findByRolesContaining(String role);
+    List<User> findByFirstNameAndLastName(String firstName, String lastName);
+    
+    // Like queries
+    List<User> findByFirstNameLike(String firstName);
+    List<User> findByUsernameContaining(String username);
+    
+    // Date queries
+    List<User> findByCreatedAtAfter(LocalDateTime date);
+    List<User> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+    
+    // Sorting and limiting
+    List<User> findByStatusOrderByCreatedAtDesc(UserStatus status);
+    List<User> findTop10ByStatusOrderByUsernameAsc(UserStatus status);
+    
+    // Existence and counting
+    boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
+    long countByStatus(UserStatus status);
+    
+    // Delete queries  
+    void deleteByStatus(UserStatus status);
+    long removeByCreatedAtBefore(LocalDateTime date);
+    
+    // Nested field queries
+    List<User> findByAddressCity(String city);
+    List<User> findByAddressState(String state);
+    List<User> findByAddressCityAndAddressState(String city, String state);
+    
+    // Custom JSON-based queries
+    @Query("{ 'username' : ?0 }")
+    Optional<User> findUserByUsername(String username);
+    
+    @Query("{ 'status' : ?0, 'createdAt' : { $gte : ?1 } }")
+    List<User> findActiveUsersCreatedAfter(UserStatus status, LocalDateTime date);
+    
+    @Query("{ 'roles' : { $in : ?0 } }")
+    List<User> findUsersByRoles(List<String> roles);
+    
+    @Query("{ 'address.city' : ?0 }")
+    List<User> findUsersByCity(String city);
+    
+    @Query("{ $or : [ { 'firstName' : { $regex : ?0, $options : 'i' } }, { 'lastName' : { $regex : ?0, $options : 'i' } } ] }")
+    List<User> findUsersByNamePattern(String pattern);
+    
+    // Aggregation queries
+    @Aggregation(pipeline = {
+        "{ $match : { 'status' : ?0 } }",
+        "{ $group : { _id : '$address.city', count : { $sum : 1 } } }",
+        "{ $sort : { count : -1 } }"
+    })
+    List<UserCityCount> countUsersByCity(UserStatus status);
+    
+    @Aggregation(pipeline = {
+        "{ $match : { 'createdAt' : { $gte : ?0 } } }",
+        "{ $project : { 'username' : 1, 'email' : 1, 'fullName' : { $concat : ['$firstName', ' ', '$lastName'] } } }"
+    })
+    List<UserProjection> getUserProjections(LocalDateTime since);
+    
+    // Geospatial queries
+    List<User> findByAddressLocationNear(Point location, Distance distance);
+    List<User> findByAddressLocationWithin(Circle circle);
+}
+
+// User City Count DTO for Aggregation
+public class UserCityCount {
+    private String id; // city name
+    private long count;
+    
+    // Constructors, getters, and setters...
+}
+
+// User Projection DTO
+public class UserProjection {
+    private String id;
+    private String username;
+    private String email;
+    private String fullName;
+    
+    // Constructors, getters, and setters...
+}
+
+// Order Repository
+public interface OrderRepository extends MongoRepository<Order, String> {
+    
+    List<Order> findByUserId(String userId);
+    List<Order> findByStatus(OrderStatus status);
+    List<Order> findByOrderDateBetween(LocalDateTime start, LocalDateTime end);
+    List<Order> findByTotalAmountGreaterThan(BigDecimal amount);
+    
+    // Custom queries
+    @Query("{ 'user.$id' : ObjectId(?0) }")
+    List<Order> findOrdersByUserId(String userId);
+    
+    @Query("{ 'status' : ?0, 'totalAmount' : { $gte : ?1 } }")
+    List<Order> findOrdersByStatusAndMinAmount(OrderStatus status, BigDecimal minAmount);
+    
+    @Query("{ 'items.productId' : ?0 }")
+    List<Order> findOrdersContainingProduct(String productId);
+    
+    // Aggregation for order statistics
+    @Aggregation(pipeline = {
+        "{ $match : { 'status' : 'DELIVERED' } }",
+        "{ $group : { _id : null, totalRevenue : { $sum : '$totalAmount' }, avgOrderValue : { $avg : '$totalAmount' }, orderCount : { $sum : 1 } } }"
+    })
+    OrderStatistics getOrderStatistics();
+}
+
+// Order Statistics DTO
+public class OrderStatistics {
+    private BigDecimal totalRevenue;
+    private BigDecimal avgOrderValue;
+    private long orderCount;
+    
+    // Constructors, getters, and setters...
+}
+
+// MongoDB Configuration
+@Configuration
+@EnableMongoRepositories(basePackages = "com.example.repository")
+public class MongoConfig {
+    
+    @Value("${spring.data.mongodb.uri}")
+    private String mongoUri;
+    
+    @Bean
+    public MongoClient mongoClient() {
+        return MongoClients.create(mongoUri);
+    }
+    
+    @Bean
+    public MongoTemplate mongoTemplate() {
+        return new MongoTemplate(mongoClient(), "myapp");
+    }
+    
+    @Bean
+    public MappingMongoConverter mappingMongoConverter(MongoMappingContext context, 
+                                                       MongoCustomConversions conversions) {
+        DbRefResolver dbRefResolver = new DefaultDbRefResolver(mongoTemplate().getMongoDbFactory());
+        MappingMongoConverter converter = new MappingMongoConverter(dbRefResolver, context);
+        converter.setCustomConversions(conversions);
+        converter.setCodecRegistryProvider(mongoTemplate().getMongoDbFactory());
+        return converter;
+    }
+    
+    @Bean
+    public MongoCustomConversions customConversions() {
+        List<Converter<?, ?>> converters = new ArrayList<>();
+        converters.add(new LocalDateTimeToStringConverter());
+        converters.add(new StringToLocalDateTimeConverter());
+        return new MongoCustomConversions(converters);
+    }
+}
+
+// Custom Converters
+@WritingConverter
+public class LocalDateTimeToStringConverter implements Converter<LocalDateTime, String> {
+    @Override
+    public String convert(LocalDateTime source) {
+        return source.toString();
+    }
+}
+
+@ReadingConverter  
+public class StringToLocalDateTimeConverter implements Converter<String, LocalDateTime> {
+    @Override
+    public LocalDateTime convert(String source) {
+        return LocalDateTime.parse(source);
+    }
+}
+
+// Service Layer with MongoTemplate
+@Service
+public class UserService {
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Autowired
+    private MongoTemplate mongoTemplate;
+    
+    // Repository operations
+    public User createUser(User user) {
+        if (userRepository.existsByUsername(user.getUsername())) {
+            throw new IllegalArgumentException("Username already exists");
+        }
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new IllegalArgumentException("Email already exists");
+        }
+        return userRepository.save(user);
+    }
+    
+    public Optional<User> findByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }
+    
+    public List<User> findUsersByCity(String city) {
+        return userRepository.findByAddressCity(city);
+    }
+    
+    // MongoTemplate operations
+    public List<User> findUsersWithCustomQuery(String role, UserStatus status) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("roles").in(role)
+                                 .and("status").is(status));
+        query.with(Sort.by(Sort.Direction.ASC, "username"));
+        return mongoTemplate.find(query, User.class);
+    }
+    
+    public void updateUserStatus(String userId, UserStatus newStatus) {
+        Query query = new Query(Criteria.where("id").is(userId));
+        Update update = new Update()
+            .set("status", newStatus)
+            .set("updatedAt", LocalDateTime.now());
+        
+        mongoTemplate.updateFirst(query, update, User.class);
+    }
+    
+    public void addRoleToUser(String userId, String role) {
+        Query query = new Query(Criteria.where("id").is(userId));
+        Update update = new Update()
+            .addToSet("roles", role)
+            .set("updatedAt", LocalDateTime.now());
+        
+        mongoTemplate.updateFirst(query, update, User.class);
+    }
+    
+    public void removeRoleFromUser(String userId, String role) {
+        Query query = new Query(Criteria.where("id").is(userId));
+        Update update = new Update()
+            .pull("roles", role)
+            .set("updatedAt", LocalDateTime.now());
+        
+        mongoTemplate.updateFirst(query, update, User.class);
+    }
+    
+    public long countActiveUsers() {
+        Query query = new Query(Criteria.where("status").is(UserStatus.ACTIVE));
+        return mongoTemplate.count(query, User.class);
+    }
+    
+    public List<User> findUsersWithPagination(int page, int size, String sortBy) {
+        Query query = new Query();
+        query.with(PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, sortBy)));
+        return mongoTemplate.find(query, User.class);
+    }
+    
+    // Complex aggregation operations
+    public List<UserCityCount> getUserCountByCity() {
+        Aggregation aggregation = Aggregation.newAggregation(
+            Aggregation.match(Criteria.where("status").is(UserStatus.ACTIVE)),
+            Aggregation.group("address.city").count().as("count"),
+            Aggregation.project("count").and("address.city").as("city"),
+            Aggregation.sort(Sort.Direction.DESC, "count")
+        );
+        
+        AggregationResults<UserCityCount> results = mongoTemplate.aggregate(
+            aggregation, "users", UserCityCount.class);
+        
+        return results.getMappedResults();
+    }
+    
+    public List<User> findUsersNearLocation(double longitude, double latitude, double maxDistance) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("address.location")
+            .nearSphere(new Point(longitude, latitude))
+            .maxDistance(maxDistance));
+        
+        return mongoTemplate.find(query, User.class);
+    }
+    
+    // GridFS operations for file storage
+    public String storeFile(String filename, InputStream inputStream, String contentType) {
+        GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
+        ObjectId fileId = gridFSBucket.uploadFromStream(filename, inputStream,
+            new GridFSUploadOptions().metadata(new Document("contentType", contentType)));
+        return fileId.toString();
+    }
+    
+    public GridFSDownloadStream downloadFile(String fileId) {
+        GridFSBucket gridFSBucket = GridFSBuckets.create(mongoTemplate.getDb());
+        return gridFSBucket.openDownloadStream(new ObjectId(fileId));
+    }
+}
+
+// Reactive MongoDB Repository
+public interface ReactiveUserRepository extends ReactiveMongoRepository<User, String> {
+    
+    Mono<User> findByUsername(String username);
+    Flux<User> findByStatus(UserStatus status);
+    Flux<User> findByRolesContaining(String role);
+    Flux<User> findByAddressCity(String city);
+    
+    @Query("{ 'status' : ?0, 'createdAt' : { $gte : ?1 } }")
+    Flux<User> findActiveUsersCreatedAfter(UserStatus status, LocalDateTime date);
+    
+    Mono<Boolean> existsByUsername(String username);
+    Mono<Long> countByStatus(UserStatus status);
+}
+
+// Reactive Service
+@Service
+public class ReactiveUserService {
+    
+    @Autowired
+    private ReactiveUserRepository reactiveUserRepository;
+    
+    @Autowired
+    private ReactiveMongoTemplate reactiveMongoTemplate;
+    
+    public Mono<User> createUser(User user) {
+        return reactiveUserRepository.existsByUsername(user.getUsername())
+            .flatMap(exists -> {
+                if (exists) {
+                    return Mono.error(new IllegalArgumentException("Username already exists"));
+                }
+                return reactiveUserRepository.save(user);
+            });
+    }
+    
+    public Flux<User> findActiveUsers() {
+        return reactiveUserRepository.findByStatus(UserStatus.ACTIVE);
+    }
+    
+    public Mono<User> updateUserStatus(String userId, UserStatus newStatus) {
+        Query query = new Query(Criteria.where("id").is(userId));
+        Update update = new Update()
+            .set("status", newStatus)
+            .set("updatedAt", LocalDateTime.now());
+        
+        return reactiveMongoTemplate.findAndModify(query, update, User.class);
+    }
+    
+    public Flux<User> findUsersReactive(String city, UserStatus status) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("address.city").is(city)
+                                 .and("status").is(status));
+        
+        return reactiveMongoTemplate.find(query, User.class);
+    }
+}
+
+// MongoDB Event Listeners
+@Component
+public class UserMongoEventListener extends AbstractMongoEventListener<User> {
+    
+    @Override
+    public void onBeforeConvert(BeforeConvertEvent<User> event) {
+        User user = event.getSource();
+        if (user.getId() == null) {
+            user.setCreatedAt(LocalDateTime.now());
+        }
+        user.setUpdatedAt(LocalDateTime.now());
+    }
+    
+    @Override
+    public void onBeforeSave(BeforeSaveEvent<User> event) {
+        Document document = event.getDocument();
+        // Add any last-minute document modifications
+        document.put("version", System.currentTimeMillis());
+    }
+    
+    @Override
+    public void onAfterSave(AfterSaveEvent<User> event) {
+        User user = event.getSource();
+        // Trigger any post-save operations
+        System.out.println("User saved: " + user.getUsername());
+    }
+    
+    @Override
+    public void onAfterLoad(AfterLoadEvent<User> event) {
+        Document document = event.getDocument();
+        // Perform any post-load processing
+    }
+    
+    @Override
+    public void onAfterConvert(AfterConvertEvent<User> event) {
+        User user = event.getSource();
+        // Post-conversion processing
+    }
+}
+
+// Controller for MongoDB Operations
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+    
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private ReactiveUserService reactiveUserService;
+    
+    @PostMapping
+    public ResponseEntity<User> createUser(@Valid @RequestBody User user) {
+        User createdUser = userService.createUser(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+    }
+    
+    @GetMapping("/{username}")
+    public ResponseEntity<User> getUserByUsername(@PathVariable String username) {
+        return userService.findByUsername(username)
+            .map(user -> ResponseEntity.ok(user))
+            .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @GetMapping("/city/{city}")
+    public ResponseEntity<List<User>> getUsersByCity(@PathVariable String city) {
+        List<User> users = userService.findUsersByCity(city);
+        return ResponseEntity.ok(users);
+    }
+    
+    @PutMapping("/{userId}/status")
+    public ResponseEntity<Void> updateUserStatus(@PathVariable String userId, 
+                                                @RequestParam UserStatus status) {
+        userService.updateUserStatus(userId, status);
+        return ResponseEntity.ok().build();
+    }
+    
+    @GetMapping("/reactive/active")
+    public Flux<User> getActiveUsersReactive() {
+        return reactiveUserService.findActiveUsers();
+    }
+    
+    @GetMapping("/stats/city")
+    public ResponseEntity<List<UserCityCount>> getUserCountByCity() {
+        List<UserCityCount> stats = userService.getUserCountByCity();
+        return ResponseEntity.ok(stats);
+    }
+}
+
+// Testing MongoDB Repository
+@DataMongoTest
+public class UserRepositoryTest {
+    
+    @Autowired
+    private MongoTemplate mongoTemplate;
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @BeforeEach
+    void setUp() {
+        mongoTemplate.dropCollection(User.class);
+    }
+    
+    @Test
+    public void testFindByUsername() {
+        // Given
+        User user = new User("testuser", "test@example.com", "Test", "User");
+        userRepository.save(user);
+        
+        // When
+        Optional<User> found = userRepository.findByUsername("testuser");
+        
+        // Then
+        assertThat(found).isPresent();
+        assertThat(found.get().getEmail()).isEqualTo("test@example.com");
+    }
+    
+    @Test
+    public void testCustomQuery() {
+        // Given
+        User user1 = new User("user1", "user1@example.com", "John", "Doe");
+        user1.setStatus(UserStatus.ACTIVE);
+        User user2 = new User("user2", "user2@example.com", "Jane", "Smith");
+        user2.setStatus(UserStatus.INACTIVE);
+        userRepository.saveAll(Arrays.asList(user1, user2));
+        
+        // When
+        List<User> activeUsers = userRepository.findActiveUsersCreatedAfter(
+            UserStatus.ACTIVE, LocalDateTime.now().minusHours(1));
+        
+        // Then
+        assertThat(activeUsers).hasSize(1);
+        assertThat(activeUsers.get(0).getUsername()).isEqualTo("user1");
+    }
+    
+    @Test
+    public void testAggregation() {
+        // Given - create test data with different cities
+        Address address1 = new Address();
+        address1.setCity("New York");
+        User user1 = new User("user1", "user1@example.com", "John", "Doe");
+        user1.setAddress(address1);
+        user1.setStatus(UserStatus.ACTIVE);
+        
+        Address address2 = new Address();
+        address2.setCity("New York");
+        User user2 = new User("user2", "user2@example.com", "Jane", "Smith");
+        user2.setAddress(address2);
+        user2.setStatus(UserStatus.ACTIVE);
+        
+        userRepository.saveAll(Arrays.asList(user1, user2));
+        
+        // When
+        List<UserCityCount> counts = userRepository.countUsersByCity(UserStatus.ACTIVE);
+        
+        // Then
+        assertThat(counts).hasSize(1);
+        assertThat(counts.get(0).getId()).isEqualTo("New York");
+        assertThat(counts.get(0).getCount()).isEqualTo(2);
+    }
+}
+
+====================================================================
+                            MCQ QUESTIONS
+====================================================================
+
+1. Which annotation is used to mark a MongoDB document?
+   a) @Entity
+   b) @Document
+   c) @MongoDocument
+   d) @Collection
+   Answer: b) @Document
+
+2. What is the base repository interface for MongoDB?
+   a) CrudRepository
+   b) JpaRepository
+   c) MongoRepository
+   d) DocumentRepository
+   Answer: c) MongoRepository
+
+3. Which annotation maps Java fields to MongoDB fields?
+   a) @Column
+   b) @Field
+   c) @Property
+   d) @Attribute
+   Answer: b) @Field
+
+4. How do you create an index in MongoDB using Spring Data?
+   a) @Index
+   b) @Indexed
+   c) @CreateIndex
+   d) @MongoIndex
+   Answer: b) @Indexed
+
+5. What does @DBRef annotation do?
+   a) Creates database reference
+   b) References another document
+   c) Creates foreign key
+   d) Links collections
+   Answer: b) References another document
+
+6. Which class is used for low-level MongoDB operations?
+   a) MongoOperations
+   b) MongoTemplate
+   c) MongoClient
+   d) MongoDatabase
+   Answer: b) MongoTemplate
+
+7. How do you write custom queries in MongoDB repositories?
+   a) @Query with JSON
+   b) @MongoQuery
+   c) @NativeQuery
+   d) @JsonQuery
+   Answer: a) @Query with JSON
+
+8. Which annotation is used for aggregation queries?
+   a) @Aggregate
+   b) @Aggregation
+   c) @Pipeline
+   d) @MongoAggregation
+   Answer: b) @Aggregation
+
+9. What is the reactive repository interface for MongoDB?
+   a) ReactiveRepository
+   b) MongoReactiveRepository
+   c) ReactiveMongoRepository
+   d) AsyncMongoRepository
+   Answer: c) ReactiveMongoRepository
+
+10. Which return type is used for single reactive results?
+    a) Flux
+    b) Mono
+    c) Single
+    d) Observable
+    Answer: b) Mono
+
+11. How do you handle geospatial queries in MongoDB?
+    a) Use GeoJsonPoint and distance methods
+    b) Use @Geo annotation
+    c) Use Location class
+    d) Use GPS coordinates
+    Answer: a) Use GeoJsonPoint and distance methods
+
+12. What does the $nearSphere operator do?
+    a) Finds nearby spherical objects
+    b) Calculates spherical distance
+    c) Finds documents near a point on sphere
+    d) Creates spherical index
+    Answer: c) Finds documents near a point on sphere
+
+13. Which class is used for file storage in MongoDB?
+    a) FileStorage
+    b) GridFS
+    c) MongoFile
+    d) DocumentFile
+    Answer: b) GridFS
+
+14. How do you create custom converters in MongoDB?
+    a) Implement Converter interface
+    b) Use @Converter annotation
+    c) Extend ConverterBase
+    d) Implement TypeConverter
+    Answer: a) Implement Converter interface
+
+15. Which annotation indicates a writing converter?
+    a) @WriteConverter
+    b) @WritingConverter
+    c) @ToMongo
+    d) @MongoWriter
+    Answer: b) @WritingConverter
+
+16. What is the purpose of @ReadingConverter?
+    a) Reads documents
+    b) Converts from MongoDB to Java
+    c) Reads converter configuration
+    d) Enables read operations
+    Answer: b) Converts from MongoDB to Java
+
+17. How do you enable MongoDB repositories?
+    a) @EnableRepositories
+    b) @EnableMongoRepositories
+    c) @MongoRepositoryConfig
+    d) @EnableMongoDB
+    Answer: b) @EnableMongoRepositories
+
+18. Which event listener method is called before saving?
+    a) onBeforeSave
+    b) preSave
+    c) beforeSave
+    d) preInsert
+    Answer: a) onBeforeSave
+
+19. What does MongoTemplate.upsert() do?
+    a) Updates document
+    b) Inserts document
+    c) Updates or inserts document
+    d) Merges documents
+    Answer: c) Updates or inserts document
+
+20. How do you perform batch operations in MongoDB?
+    a) Use batch methods
+    b) Use BulkOperations
+    c) Use BatchTemplate
+    d) Use MongoBatch
+    Answer: b) Use BulkOperations
+
+21. Which method is used for text search in MongoDB?
+    a) search()
+    b) findByText()
+    c) TextQuery
+    d) $text operator in @Query
+    Answer: d) $text operator in @Query
+
+22. How do you create a compound index?
+    a) @Indexed on multiple fields
+    b) @CompoundIndex
+    c) @MultiIndex
+    d) Use MongoTemplate
+    Answer: b) @CompoundIndex
+
+23. What is the default collection name for a User document?
+    a) User
+    b) user
+    c) users
+    d) USER
+    Answer: b) user
+
+24. Which testing annotation is used for MongoDB?
+    a) @MongoTest
+    b) @DataMongoTest
+    c) @SpringMongoTest
+    d) @MongoRepositoryTest
+    Answer: b) @DataMongoTest
+
+25. How do you configure MongoDB connection URI?
+    a) spring.mongodb.uri
+    b) spring.data.mongodb.uri
+    c) mongodb.connection.uri
+    d) mongo.uri
+    Answer: b) spring.data.mongodb.uri
+
+====================================================================

@@ -1,0 +1,157 @@
+====================================================================
+                        JAVA SYLLABUS STUDY GUIDE
+                          COMPLETE REFERENCE
+====================================================================
+
+This comprehensive study guide covers all topics from your Java APC syllabus:
+
+LECTURES 1-8: JAVA ESSENTIALS
+├── 01-Exception-Handling.txt        ✓ Complete
+├── 02-Lambda-Expressions.txt        ✓ Complete  
+├── 03-Annotations.txt               ✓ Complete
+├── 04-Modules.txt                   ✓ Complete
+├── 05-Optionals.txt                 ✓ Complete
+├── 06-Dependency-Injection.txt      ✓ Complete
+├── 07-IO-Operations.txt             ✓ Complete
+└── 08-File-Operations.txt           ✓ Complete
+
+LECTURES 9-20: JAVA COLLECTIONS
+├── 01-Array-vs-ArrayList.txt        ✓ Complete
+├── 02-Set-Collection.txt            ✓ Complete
+├── 03-Map-Collection.txt            ✓ Complete
+├── 04-Queue-Stack-Deque.txt         ✓ Complete
+├── 05-Iterator-Collections.txt      🔄 Next
+└── 06-Collections-Utility.txt       🔄 Next
+
+LECTURES 21-25: CONCURRENCY
+├── 01-Volatile-Keyword.txt          🔄 Next
+├── 02-Java-Memory-Model.txt         🔄 Next
+├── 03-Threads-Virtual-Threads.txt   🔄 Next
+└── 04-Synchronization.txt           🔄 Next
+
+LECTURES 26-30: BUILD TOOLS
+└── 01-Maven.txt                     🔄 Next
+
+LECTURES 31-34: FUNCTIONAL PROGRAMMING
+└── 01-Higher-Order-Functions.txt    🔄 Next
+
+LECTURES 35-40: DATABASE ACCESS
+└── 01-JDBC.txt                      🔄 Next
+
+LECTURES 41-48: SPRING CORE
+├── 01-Spring-Introduction.txt       🔄 Next
+├── 02-Spring-Configuration.txt      🔄 Next
+├── 03-Spring-IOC.txt               🔄 Next
+├── 04-Spring-AOP.txt               🔄 Next
+└── 05-Spring-MVC.txt               🔄 Next
+
+LECTURES 49-52: HIBERNATE
+├── 01-Hibernate-Transactions.txt   🔄 Next
+├── 02-Hibernate-Relationships.txt  🔄 Next
+└── 03-Entity-Lifecycle.txt         🔄 Next
+
+LECTURES 53-58: SPRING BOOT
+├── 01-Spring-Boot-Starters.txt     🔄 Next
+├── 02-Auto-Configuration.txt       🔄 Next
+├── 03-Actuators.txt                🔄 Next
+└── 04-Embedded-Server.txt          🔄 Next
+
+LECTURES 59-62: SPRING DATA
+├── 01-Spring-Data-JPA.txt          🔄 Next
+├── 02-Spring-Data-MongoDB.txt      🔄 Next
+└── 03-Spring-Data-JDBC.txt         🔄 Next
+
+LECTURES 63-67: MICROSERVICES
+├── 01-Spring-Cloud-Gateway.txt     🔄 Next
+├── 02-Cloud-Config.txt             🔄 Next
+├── 03-Circuit-Breaker.txt          🔄 Next
+└── 04-OpenFeign.txt                🔄 Next
+
+LECTURES 68-71: SPRING MVC ADVANCED
+├── 01-Servlets.txt                 🔄 Next
+├── 02-JSP-Files.txt                🔄 Next
+└── 03-MVC-Architecture.txt         🔄 Next
+
+LECTURES 72-75: TESTING
+├── 01-JUnit.txt                    🔄 Next
+└── 02-JMeter.txt                   🔄 Next
+
+====================================================================
+                            STUDY STRATEGY
+====================================================================
+
+ST-1 PREPARATION (Lectures 1-34):
+□ Master Java Essentials - Exception Handling, Lambda, Annotations
+□ Understand Collections Framework thoroughly
+□ Learn Concurrency concepts
+□ Practice Maven build tool
+□ Understand Functional Programming
+
+ST-2 PREPARATION (Lectures 35-67):
+□ Master Database Access with JDBC
+□ Deep dive into Spring Framework
+□ Understand Hibernate ORM
+□ Learn Spring Boot features
+□ Master Spring Data
+□ Understand Microservices architecture
+
+END TERM PREPARATION (Full Syllabus):
+□ Review all topics systematically
+□ Practice MCQs from each file
+□ Focus on integration between topics
+□ Practice hands-on coding examples
+
+====================================================================
+                            MCQ PRACTICE TIPS
+====================================================================
+
+Each topic file contains 20-25 carefully crafted MCQs covering:
+✓ Core concepts and definitions
+✓ Practical usage scenarios  
+✓ Common mistakes and pitfalls
+✓ Performance considerations
+✓ Best practices
+✓ Real-world applications
+
+EXAM PREPARATION STRATEGY:
+1. Read theory section thoroughly
+2. Understand code examples
+3. Practice all MCQs multiple times
+4. Focus on explanation of answers
+5. Review incorrect answers
+6. Practice integration between topics
+
+====================================================================
+                            KEY EXAM TOPICS
+====================================================================
+
+HIGH PRIORITY TOPICS (Most likely in exams):
+• Exception Handling mechanisms
+• Lambda expressions and functional interfaces
+• Collections Framework (List, Set, Map)
+• Thread safety and synchronization
+• Spring Core concepts (IOC, DI, AOP)
+• Spring Boot auto-configuration
+• Hibernate entity lifecycle
+• Microservices patterns
+
+MEDIUM PRIORITY:
+• Modules and annotations
+• File I/O operations
+• Maven build lifecycle
+• Spring Data repositories
+• Testing frameworks
+
+INTEGRATION TOPICS (Cross-cutting):
+• Spring + Hibernate integration
+• Microservices + Spring Cloud
+• Testing Spring applications
+• Database transactions
+
+====================================================================
+
+Each file contains comprehensive theory, practical examples, and 
+extensive MCQ practice. Follow the sequence and master each topic
+before moving to the next for best results!
+
+====================================================================
