@@ -3,7 +3,9 @@
 ====================================================================
 
 INTRODUCTION:
-Spring MVC (Model-View-Controller) is Spring's web framework implementation that follows the MVC design pattern. It provides a flexible and powerful way to build web applications by separating concerns into Models (data), Views (presentation), and Controllers (request handling logic). Spring MVC is built around a DispatcherServlet that dispatches requests to appropriate handlers.
+Spring MVC (Model-View-Controller) is Spring's web framework implementation that follows the MVC design pattern.
+ It provides a flexible and powerful way to build web applications by separating concerns into Models (data), 
+ Views (presentation), and Controllers (request handling logic). Spring MVC is built around a DispatcherServlet that dispatches requests to appropriate handlers.
 
 KEY CONCEPTS:
 

@@ -1,0 +1,81 @@
+class with age and marks implementing comparable interface 
+
+class Student implements Comparable<Student>{
+    int age;
+    int makrs;
+    Student(int age, int marks){
+        this.age = age;
+        this.marks = marks;
+
+    }
+
+    @Override
+    public int compareTo(Student a){
+        return this.age - a.age;
+
+    }
+
+    @Override
+    public String toString(){
+        return "This is the testing of this";
+    }
+
+}
+
+
+
+//so it has a method called as compareto which takes an object of the same class and returns an integer value
+Comparable<Student> --- compareTo -- we need to override this method and inside it..we need to return 
+
+
+
+
+implementing the exception 
+
+class underage implements Exception{
+    underage(String msg){
+        super(msg);
+    }
+
+    
+}
+
+public class Age{
+    public static void valid(int age) throws underage{
+        if(age<18){
+            throw new underage("Nikal");
+        }
+
+    }
+}
+
+
+
+
+
+//now we are implementing the balanced parenthesis
+
+public class Main{
+public static boolean isValid(String s){
+    Stack<Character>st = new Stack<>();
+    for(char c : s.toCharArray()){
+        if()
+    }
+}
+
+    public static void main(String args)
+}
+
+
+
+//great..now we are sorting the strings on basis of lengthh 
+public class Main{
+    public static void main(String args[]){
+        Scanner sc = new Scanner(System.in);
+        String s = sc.next();
+        String[] str = ["abc", "ab", "abcd", "a"];
+        Arrays.sort(str, (a,b)->{
+            return a.length() - b.length();
+        })
+    }
+}

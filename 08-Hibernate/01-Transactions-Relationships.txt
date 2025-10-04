@@ -3,7 +3,9 @@
 ====================================================================
 
 INTRODUCTION:
-Hibernate is the most popular Object-Relational Mapping (ORM) framework for Java. It provides transaction management capabilities and supports various types of entity relationships. Transactions ensure data consistency and integrity, while relationships define how entities are associated with each other in the database.
+Hibernate is the most popular Object-Relational Mapping (ORM) framework for Java. It provides transaction management capabilities and 
+supports various types of entity relationships. Transactions ensure data consistency and integrity, while relationships define how
+ entities are associated with each other in the database.
 
 KEY CONCEPTS:
 

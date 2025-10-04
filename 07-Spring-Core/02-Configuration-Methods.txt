@@ -3,7 +3,9 @@
 ====================================================================
 
 INTRODUCTION:
-Spring Core Configuration defines how beans are created, wired, and managed within the Spring IoC container. Spring offers multiple configuration approaches: XML-based, annotation-based, and Java-based configuration. Modern Spring applications primarily use annotation and Java configuration for better type safety and IDE support.
+Spring Core Configuration defines how beans are created, wired, and managed within the Spring IoC container.
+ Spring offers multiple configuration approaches: XML-based, annotation-based, and Java-based configuration.
+  Modern Spring applications primarily use annotation and Java configuration for better type safety and IDE support.
 
 KEY CONCEPTS:
 

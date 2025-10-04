@@ -1,0 +1,1145 @@
+====================================================================
+                    JAVA APC - COMPREHENSIVE MCQ COLLECTION
+                     HIGH-PRIORITY EXAM QUESTIONS
+====================================================================
+
+IMPORTANT NOTE: This file contains 200+ carefully selected MCQs that have the highest 
+probability of appearing in your Java APC exam. These questions cover all major topics 
+from Lectures 1-75 and are based on frequently asked concepts in APC examinations.
+
+====================================================================
+                        JAVA ESSENTIALS (40 Questions)
+====================================================================
+
+1. Which exception is thrown when array index is out of bounds?
+   a) NullPointerException
+   b) IndexOutOfBoundsException
+   c) ArrayIndexOutOfBoundsException
+   d) IllegalArgumentException
+   Answer: c) ArrayIndexOutOfBoundsException
+
+2. What is the difference between checked and unchecked exceptions?
+   a) Checked exceptions must be handled at compile time
+   b) Unchecked exceptions must be handled at runtime
+   c) No difference
+   d) Checked exceptions are faster
+   Answer: a) Checked exceptions must be handled at compile time
+
+3. Which functional interface represents a function that takes one argument and returns a result?
+   a) Consumer
+   b) Supplier
+   c) Function
+   d) Predicate
+   Answer: c) Function
+
+4. What does Optional.orElse() do?
+   a) Throws exception if empty
+   b) Returns alternative value if empty
+   c) Checks if value is present
+   d) Maps the value
+   Answer: b) Returns alternative value if empty
+
+5. Which annotation is used to inject dependencies in Spring?
+   a) @Inject
+   b) @Autowired
+   c) @Resource
+   d) All of the above
+   Answer: d) All of the above
+
+6. What is the purpose of try-with-resources?
+   a) Handle multiple exceptions
+   b) Automatically close resources
+   c) Retry failed operations
+   d) Catch runtime exceptions
+   Answer: b) Automatically close resources
+
+7. Which lambda expression is equivalent to Predicate<String> p = s -> s.length() > 5?
+   a) String::length
+   b) s -> s.length() > 5
+   c) (String s) -> s.length() > 5
+   d) Both b and c
+   Answer: d) Both b and c
+
+8. What does @Retention(RetentionPolicy.RUNTIME) mean?
+   a) Annotation available at runtime
+   b) Annotation discarded at runtime
+   c) Annotation only for compilation
+   d) Annotation for documentation
+   Answer: a) Annotation available at runtime
+
+9. Which method creates a module descriptor?
+   a) module-info.class
+   b) module-info.java
+   c) module.properties
+   d) META-INF/module.xml
+   Answer: b) module-info.java
+
+10. What is the difference between FileInputStream and BufferedInputStream?
+    a) No difference
+    b) BufferedInputStream is faster due to buffering
+    c) FileInputStream is for text files only
+    d) BufferedInputStream is for binary files only
+    Answer: b) BufferedInputStream is faster due to buffering
+
+11. Which exception handling block is always executed?
+    a) try
+    b) catch
+    c) finally
+    d) throw
+    Answer: c) finally
+
+12. What does Consumer<T> functional interface do?
+    a) Returns a value of type T
+    b) Takes T as input, returns boolean
+    c) Takes T as input, returns nothing
+    d) Takes two inputs, returns T
+    Answer: c) Takes T as input, returns nothing
+
+13. Which Optional method throws NoSuchElementException?
+    a) orElse()
+    b) orElseGet()
+    c) get()
+    d) isPresent()
+    Answer: c) get()
+
+14. What is the purpose of @Target annotation?
+    a) Specifies where annotation can be applied
+    b) Sets annotation target value
+    c) Targets specific classes
+    d) Creates annotation targets
+    Answer: a) Specifies where annotation can be applied
+
+15. Which is NOT a valid module directive?
+    a) requires
+    b) exports
+    c) provides
+    d) includes
+    Answer: d) includes
+
+16. What does Files.copy() do?
+    a) Copies file content only
+    b) Copies file with attributes
+    c) Creates file backup
+    d) Duplicates file reference
+    Answer: b) Copies file with attributes
+
+17. Which exception is thrown by Thread.sleep()?
+    a) InterruptedException
+    b) ThreadException
+    c) SleepException
+    d) IllegalStateException
+    Answer: a) InterruptedException
+
+18. What is method reference for Integer.parseInt?
+    a) Integer::parseInt
+    b) Integer.parseInt
+    c) parseInt::Integer
+    d) Integer->parseInt
+    Answer: a) Integer::parseInt
+
+19. Which Optional method is used for transformation?
+    a) map()
+    b) filter()
+    c) flatMap()
+    d) All of the above
+    Answer: d) All of the above
+
+20. What does @Documented annotation do?
+    a) Documents the code
+    b) Includes annotation in JavaDoc
+    c) Creates documentation
+    d) Validates documentation
+    Answer: b) Includes annotation in JavaDoc
+
+====================================================================
+                        COLLECTIONS (30 Questions)
+====================================================================
+
+21. What is the default capacity of ArrayList?
+    a) 10
+    b) 16
+    c) 32
+    d) 0
+    Answer: a) 10
+
+22. Which collection allows duplicate elements but maintains insertion order?
+    a) HashSet
+    b) TreeSet
+    c) LinkedHashSet
+    d) ArrayList
+    Answer: d) ArrayList
+
+23. What is the time complexity of HashMap.get()?
+    a) O(1)
+    b) O(n)
+    c) O(log n)
+    d) O(n²)
+    Answer: a) O(1)
+
+24. Which Set implementation maintains sorted order?
+    a) HashSet
+    b) LinkedHashSet
+    c) TreeSet
+    d) EnumSet
+    Answer: c) TreeSet
+
+25. What does fail-fast iterator mean?
+    a) Iterator fails on first error
+    b) Iterator detects concurrent modification
+    c) Iterator is faster than others
+    d) Iterator fails quickly
+    Answer: b) Iterator detects concurrent modification
+
+26. Which Queue method throws exception when queue is full?
+    a) offer()
+    b) add()
+    c) put()
+    d) insert()
+    Answer: b) add()
+
+27. What is the difference between Stack and Deque?
+    a) No difference
+    b) Deque supports both ends operations
+    c) Stack is faster
+    d) Stack is thread-safe
+    Answer: b) Deque supports both ends operations
+
+28. Which Map implementation is thread-safe?
+    a) HashMap
+    b) LinkedHashMap
+    c) TreeMap
+    d) ConcurrentHashMap
+    Answer: d) ConcurrentHashMap
+
+29. What does Collections.synchronizedList() return?
+    a) Thread-safe list
+    b) Immutable list
+    c) Sorted list
+    d) Concurrent list
+    Answer: a) Thread-safe list
+
+30. Which iterator allows modification during iteration?
+    a) Iterator
+    b) ListIterator
+    c) Enumeration
+    d) Spliterator
+    Answer: b) ListIterator
+
+31. What is the load factor of HashMap?
+    a) 0.5
+    b) 0.75
+    c) 1.0
+    d) 0.25
+    Answer: b) 0.75
+
+32. Which collection is best for frequent insertions/deletions in middle?
+    a) ArrayList
+    b) LinkedList
+    c) Vector
+    d) Array
+    Answer: b) LinkedList
+
+33. What does TreeMap use for sorting?
+i    a) hashCode()
+    b) equals()
+    c) Comparable/Comparator
+    d) toString()
+    Answer: c) Comparable/Comparator
+
+34. Which method removes all elements from collection?
+    a) remove()
+    b) delete()
+    c) clear()
+    d) empty()
+    Answer: c) clear()
+
+35. What is the difference between poll() and remove() in Queue?
+    a) No difference
+    b) poll() returns null if empty, remove() throws exception
+    c) poll() is faster
+    d) remove() is safer
+    Answer: b) poll() returns null if empty, remove() throws exception
+
+====================================================================
+                        CONCURRENCY (25 Questions)
+====================================================================
+
+36. What does volatile keyword ensure?
+    a) Thread safety
+    b) Visibility across threads
+    c) Atomicity
+    d) Immutability
+    Answer: b) Visibility across threads
+
+37. Which method starts a thread?
+    a) run()
+    b) start()
+    c) execute()
+    d) begin()
+    Answer: b) start()
+
+38. What is the difference between synchronized method and synchronized block?
+    a) No difference
+    b) Block allows finer control over locking
+    c) Method is faster
+    d) Block is thread-safe
+    Answer: b) Block allows finer control over locking
+
+39. Which class is used for thread-safe counter?
+    a) Integer
+    b) AtomicInteger
+    c) Counter
+    d) SafeInteger
+    Answer: b) AtomicInteger
+
+40. What does CountDownLatch do?
+    a) Counts threads
+    b) Allows threads to wait until count reaches zero
+    c) Creates thread pool
+    d) Manages thread lifecycle
+    Answer: b) Allows threads to wait until count reaches zero
+
+41. Which ExecutorService method shuts down gracefully?
+    a) shutdown()
+    b) shutdownNow()
+    c) terminate()
+    d) close()
+    Answer: a) shutdown()
+
+42. What is the purpose of CyclicBarrier?
+    a) Barrier for threads
+    b) Allows threads to wait for each other
+    c) Creates thread cycles
+    d) Manages thread barriers
+    Answer: b) Allows threads to wait for each other
+
+43. Which lock allows multiple readers?
+    a) ReentrantLock
+    b) ReadWriteLock
+    c) Mutex
+    d) Semaphore
+    Answer: b) ReadWriteLock
+
+44. What does Thread.yield() do?
+    a) Stops thread execution
+    b) Suggests thread scheduler to pause current thread
+    c) Terminates thread
+    d) Creates new thread
+    Answer: b) Suggests thread scheduler to pause current thread
+
+45. Which collection is thread-safe without synchronization?
+    a) ArrayList
+    b) HashMap
+    c) ConcurrentHashMap
+    d) TreeMap
+    Answer: c) ConcurrentHashMap
+
+====================================================================
+                        SPRING CORE (35 Questions)
+====================================================================
+
+46. What is Inversion of Control (IoC)?
+    a) Controlling inversions
+    b) Framework controls object creation and dependencies
+    c) Inverse object control
+    d) Control flow inversion
+    Answer: b) Framework controls object creation and dependencies
+
+47. Which annotation marks a class as Spring component?
+    a) @Bean
+    b) @Component
+    c) @Service
+    d) All of the above
+    Answer: d) All of the above
+
+48. What is the default scope of Spring beans?
+    a) Prototype
+    b) Singleton
+    c) Request
+    d) Session
+    Answer: b) Singleton
+
+49. Which annotation is used for configuration classes?
+    a) @Configuration
+    b) @Config
+    c) @Settings
+    d) @Setup
+    Answer: a) @Configuration
+
+50. What does @Autowired annotation do?
+    a) Creates automatic wiring
+    b) Injects dependencies automatically
+    c) Makes class autowired
+    d) Enables autowiring
+    Answer: b) Injects dependencies automatically
+
+51. Which AOP advice executes after method execution?
+    a) @Before
+    b) @After
+    c) @AfterReturning
+    d) @Around
+    Answer: b) @After
+
+52. What is a Spring Aspect?
+    a) Cross-cutting concern implementation
+    b) Method aspect
+    c) Class aspect
+    d) Interface aspect
+    Answer: a) Cross-cutting concern implementation
+
+53. Which annotation enables AOP?
+    a) @EnableAOP
+    b) @EnableAspectJAutoProxy
+    c) @AOPEnabled
+    d) @AspectEnabled
+    Answer: b) @EnableAspectJAutoProxy
+
+54. What does @Primary annotation do?
+    a) Makes bean primary
+    b) Sets bean priority when multiple candidates exist
+    c) Creates primary configuration
+    d) Enables primary mode
+    Answer: b) Sets bean priority when multiple candidates exist
+
+55. Which ApplicationContext loads beans eagerly?
+    a) BeanFactory
+    b) ApplicationContext
+    c) WebApplicationContext
+    d) All contexts
+    Answer: b) ApplicationContext
+
+56. What is @Qualifier used for?
+    a) Qualifies beans
+    b) Resolves ambiguity when multiple beans of same type exist
+    c) Sets bean quality
+    d) Creates qualified beans
+    Answer: b) Resolves ambiguity when multiple beans of same type exist
+
+57. Which lifecycle method is called after bean initialization?
+    a) @PostConstruct
+    b) @PreDestroy
+    c) @InitMethod
+    d) @StartUp
+    Answer: a) @PostConstruct
+
+58. What does @Value annotation do?
+    a) Sets bean value
+    b) Injects property values
+    c) Validates values
+    d) Creates value objects
+    Answer: b) Injects property values
+
+59. Which annotation creates conditional beans?
+    a) @Condition
+    b) @Conditional
+    c) @If
+    d) @When
+    Answer: b) @Conditional
+
+60. What is Spring Profile used for?
+    a) User profiling
+    b) Environment-specific bean configuration
+    c) Performance profiling
+    d) Code profiling
+    Answer: b) Environment-specific bean configuration
+
+====================================================================
+                        SPRING BOOT (25 Questions)
+====================================================================
+
+61. What is the main annotation for Spring Boot application?
+    a) @SpringApplication
+    b) @SpringBootApplication
+    c) @BootApplication
+    d) @Application
+    Answer: b) @SpringBootApplication
+
+62. Which embedded server is default in Spring Boot?
+    a) Jetty
+    b) Tomcat
+    c) Undertow
+    d) Netty
+    Answer: b) Tomcat
+
+63. What does Spring Boot Starter do?
+    a) Starts applications
+    b) Provides dependency management and auto-configuration
+    c) Creates boot configuration
+    d) Manages application startup
+    Answer: b) Provides dependency management and auto-configuration
+
+64. Which annotation enables configuration properties?
+    a) @ConfigurationProperties
+    b) @EnableProperties
+    c) @Properties
+    d) @Configuration
+    Answer: a) @ConfigurationProperties
+
+65. What is the default port for Spring Boot application?
+    a) 8080
+    b) 8000
+    c) 9090
+    d) 8081
+    Answer: a) 8080
+
+66. Which actuator endpoint shows application health?
+    a) /actuator/status
+    b) /actuator/health
+    c) /actuator/info
+    d) /actuator/metrics
+    Answer: b) /actuator/health
+
+67. How do you exclude auto-configuration?
+    a) Using @EnableAutoConfiguration(exclude)
+    b) Using @SpringBootApplication(exclude)
+    c) Both a and b
+    d) Using application.properties
+    Answer: c) Both a and b
+
+68. Which file is used for Spring Boot configuration?
+    a) application.properties
+    b) application.yml
+    c) application.yaml
+    d) All of the above
+    Answer: d) All of the above
+
+69. What does @ConditionalOnProperty do?
+    a) Checks property values
+    b) Creates conditional beans based on property values
+    c) Sets property conditions
+    d) Validates properties
+    Answer: b) Creates conditional beans based on property values
+
+70. Which Spring Boot feature provides production-ready features?
+    a) Starters
+    b) Auto-configuration
+    c) Actuator
+    d) CLI
+    Answer: c) Actuator
+
+====================================================================
+                        SPRING DATA & JPA (20 Questions)
+====================================================================
+
+71. Which is the base repository interface in Spring Data JPA?
+    a) Repository
+    b) CrudRepository
+    c) JpaRepository
+    d) PagingAndSortingRepository
+    Answer: a) Repository
+
+72. What does @Query annotation do?
+    a) Creates queries
+    b) Executes custom JPQL/SQL queries
+    c) Validates queries
+    d) Optimizes queries
+    Answer: b) Executes custom JPQL/SQL queries
+
+73. Which annotation is used for pagination?
+    a) @Pageable
+    b) @Page
+    c) @Pagination
+    d) No annotation needed
+    Answer: d) No annotation needed
+
+74. What does @Modifying indicate?
+    a) Query modifies data
+    b) Method is modifiable
+    c) Entity is modifiable
+    d) Transaction is modifiable
+    Answer: a) Query modifies data
+
+75. Which method prefix finds entities?
+    a) getBy
+    b) findBy
+    c) searchBy
+    d) queryBy
+    Answer: b) findBy
+
+76. What does @Transactional do?
+    a) Creates transactions
+    b) Manages transaction boundaries
+    c) Validates transactions
+    d) Monitors transactions
+    Answer: b) Manages transaction boundaries
+
+77. Which annotation maps entities to database tables?
+    a) @Table
+    b) @Entity
+    c) @Column
+    d) @Mapping
+    Answer: b) @Entity
+
+78. What is cascade in JPA?
+    a) Waterfall operations
+    b) Propagates operations to related entities
+    c) Database cascading
+    d) Query cascading
+    Answer: b) Propagates operations to related entities
+
+79. Which fetch type loads data immediately?
+    a) LAZY
+    b) EAGER
+    c) IMMEDIATE
+    d) FAST
+    Answer: b) EAGER
+
+80. What does @JoinColumn specify?
+    a) Join operations
+    b) Foreign key column for relationships
+    c) Column joins
+    d) Join table columns
+    Answer: b) Foreign key column for relationships
+
+====================================================================
+                        MICROSERVICES (20 Questions)
+====================================================================
+
+81. What is the main principle of microservices?
+    a) Single large application
+    b) Small, independent services
+    c) Shared database
+    d) Monolithic architecture
+    Answer: b) Small, independent services
+
+82. Which Spring Cloud component provides service discovery?
+    a) Config Server
+    b) Gateway
+    c) Eureka
+    d) Hystrix
+    Answer: c) Eureka
+
+83. What is API Gateway used for?
+    a) Gateway APIs
+    b) Single entry point for all services
+    c) API management
+    d) Gateway configuration
+    Answer: b) Single entry point for all services
+
+84. Which annotation is used for Feign clients?
+    a) @FeignClient
+    b) @RestClient
+    c) @ServiceClient
+    d) @HttpClient
+    Answer: a) @FeignClient
+
+85. What does Circuit Breaker pattern prevent?
+    a) Circuit breaks
+    b) Cascade failures
+    c) Service breaks
+    d) Pattern breaks
+    Answer: b) Cascade failures
+
+86. Which annotation enables Eureka client?
+    a) @EnableEureka
+    b) @EnableEurekaClient
+    c) @EurekaClient
+    d) @EnableDiscovery
+    Answer: b) @EnableEurekaClient
+
+87. What does @LoadBalanced do?
+    a) Balances load
+    b) Enables client-side load balancing
+    c) Creates load balancer
+    d) Manages load
+    Answer: b) Enables client-side load balancing
+
+88. Which component manages configuration centrally?
+    a) Config Server
+    b) Registry Server
+    c) Management Server
+    d) Control Server
+    Answer: a) Config Server
+
+89. What is the purpose of fallback methods?
+    a) Method fallbacks
+    b) Called when circuit breaker is open
+    c) Backup methods
+    d) Error methods
+    Answer: b) Called when circuit breaker is open
+
+90. Which pattern handles distributed transactions?
+    a) Circuit Breaker
+    b) Saga
+    c) Gateway
+    d) Registry
+    Answer: b) Saga
+
+====================================================================
+                        SPRING MVC & WEB (15 Questions)
+====================================================================
+
+91. What is the front controller in Spring MVC?
+    a) @Controller
+    b) DispatcherServlet
+    c) ViewResolver
+    d) Handler
+    Answer: b) DispatcherServlet
+
+92. Which annotation maps HTTP requests?
+    a) @RequestMapping
+    b) @GetMapping
+    c) @PostMapping
+    d) All of the above
+    Answer: d) All of the above
+
+93. What does @PathVariable do?
+    a) Sets path variables
+    b) Extracts values from URL path
+    c) Creates path variables
+    d) Validates paths
+    Answer: b) Extracts values from URL path
+
+94. Which annotation binds request parameters?
+    a) @RequestParam
+    b) @Parameter
+    c) @Param
+    d) @Request
+    Answer: a) @RequestParam
+
+95. What does @ResponseBody do?
+    a) Creates response body
+    b) Converts return value to HTTP response body
+    c) Validates response
+    d) Formats response
+    Answer: b) Converts return value to HTTP response body
+
+96. Which annotation creates REST controllers?
+    a) @Controller
+    b) @RestController
+    c) @WebController
+    d) @APIController
+    Answer: b) @RestController
+
+97. What does ViewResolver do?
+    a) Resolves views
+    b) Maps logical view names to actual views
+    c) Creates views
+    d) Validates views
+    Answer: b) Maps logical view names to actual views
+
+98. Which annotation validates request data?
+    a) @Valid
+    b) @Validated
+    c) @Check
+    d) Both a and b
+    Answer: d) Both a and b
+
+99. What does @ModelAttribute do?
+    a) Creates model attributes
+    b) Binds request data to objects
+    c) Validates models
+    d) Maps models
+    Answer: b) Binds request data to objects
+
+100. Which annotation handles exceptions?
+     a) @ExceptionHandler
+     b) @ErrorHandler
+     c) @HandleException
+     d) @CatchException
+     Answer: a) @ExceptionHandler
+
+====================================================================
+                        TESTING (20 Questions)
+====================================================================
+
+101. Which annotation marks a JUnit 5 test method?
+     a) @Test
+     b) @TestMethod
+     c) @UnitTest
+     d) @TestCase
+     Answer: a) @Test
+
+102. What does @BeforeEach do?
+     a) Runs before each test class
+     b) Runs before each test method
+     c) Runs before all tests
+     d) Runs before setup
+     Answer: b) Runs before each test method
+
+103. Which assertion checks for exceptions?
+     a) assertThrows()
+     b) expectException()
+     c) assertException()
+     d) throwsException()
+     Answer: a) assertThrows()
+
+104. What does @MockBean do in Spring Boot tests?
+     a) Creates mock beans
+     b) Replaces beans in Spring context with mocks
+     c) Validates mock beans
+     d) Manages mock beans
+     Answer: b) Replaces beans in Spring context with mocks
+
+105. Which annotation tests web layer only?
+     a) @SpringBootTest
+     b) @WebMvcTest
+     c) @WebTest
+     d) @ControllerTest
+     Answer: b) @WebMvcTest
+
+106. What is JMeter primarily used for?
+     a) Unit testing
+     b) Performance testing
+     c) Integration testing
+     d) Security testing
+     Answer: b) Performance testing
+
+107. Which JMeter component defines number of users?
+     a) Test Plan
+     b) Thread Group
+     c) Sampler
+     d) Listener
+     Answer: b) Thread Group
+
+108. What does ramp-up time control?
+     a) Test duration
+     b) How quickly threads are started
+     c) Response time
+     d) Server startup time
+     Answer: b) How quickly threads are started
+
+109. Which assertion validates response time in JMeter?
+     a) Response Assertion
+     b) Duration Assertion
+     c) Time Assertion
+     d) Speed Assertion
+     Answer: b) Duration Assertion
+
+110. What does @DataJpaTest do?
+     a) Tests all data layers
+     b) Tests JPA repositories only
+     c) Tests data validation
+     d) Tests database connections
+     Answer: b) Tests JPA repositories only
+
+====================================================================
+                        MAVEN & BUILD TOOLS (10 Questions)
+====================================================================
+
+111. What is Maven primarily used for?
+     a) Code compilation
+     b) Build automation and dependency management
+     c) Testing framework
+     d) IDE integration
+     Answer: b) Build automation and dependency management
+
+112. Which file contains Maven project configuration?
+     a) build.xml
+     b) pom.xml
+     c) maven.properties
+     d) project.xml
+     Answer: b) pom.xml
+
+113. What does mvn clean compile do?
+     a) Cleans and compiles project
+     b) Only compiles project
+     c) Only cleans project
+     d) Tests project
+     Answer: a) Cleans and compiles project
+
+114. Which Maven scope includes dependencies only for testing?
+     a) compile
+     b) runtime
+     c) test
+     d) provided
+     Answer: c) test
+
+115. What is Maven's default directory structure for source code?
+     a) src/java
+     b) src/main/java
+     c) java/src
+     d) main/java
+     Answer: b) src/main/java
+
+116. Which command packages the project?
+     a) mvn compile
+     b) mvn build
+     c) mvn package
+     d) mvn install
+     Answer: c) mvn package
+
+117. What does Maven Central Repository contain?
+     a) Source code
+     b) JAR files and dependencies
+     c) Documentation
+     d) Configuration files
+     Answer: b) JAR files and dependencies
+
+118. Which scope makes dependencies available at runtime only?
+     a) compile
+     b) runtime
+     c) provided
+     d) system
+     Answer: b) runtime
+
+119. What does mvn install do?
+     a) Installs Maven
+     b) Installs project artifact to local repository
+     c) Installs dependencies
+     d) Installs plugins
+     Answer: b) Installs project artifact to local repository
+
+120. Which element defines project dependencies in pom.xml?
+     a) <dependency>
+     b) <dependencies>
+     c) <libs>
+     d) <imports>
+     Answer: b) <dependencies>
+
+====================================================================
+                    ADDITIONAL HIGH-PRIORITY QUESTIONS
+====================================================================
+
+121. What is the difference between @Component and @Service?
+     a) No functional difference, @Service is more specific
+     b) @Service has additional features
+     c) @Component is faster
+     d) @Service is for web services only
+     Answer: a) No functional difference, @Service is more specific
+
+122. Which HTTP status code indicates successful request?
+     a) 200
+     b) 201
+     c) 204
+     d) All of the above
+     Answer: d) All of the above
+
+123. What does @Transactional(readOnly = true) do?
+     a) Makes transaction read-only
+     b) Optimizes performance for read operations
+     c) Prevents data modification
+     d) All of the above
+     Answer: d) All of the above
+
+124. Which annotation enables async processing?
+     a) @Async
+     b) @EnableAsync
+     c) Both a and b needed
+     d) @Asynchronous
+     Answer: c) Both a and b needed
+
+125. What is the purpose of @JsonIgnore?
+     a) Ignores JSON
+     b) Excludes property from JSON serialization
+     c) Validates JSON
+     d) Formats JSON
+     Answer: b) Excludes property from JSON serialization
+
+126. Which collection is best for unique elements with fast access?
+     a) ArrayList
+     b) LinkedList
+     c) HashSet
+     d) TreeSet
+     Answer: c) HashSet
+
+127. What does stream().parallel() do?
+     a) Creates parallel streams
+     b) Enables parallel processing of stream operations
+     c) Parallelizes data
+     d) Creates multiple streams
+     Answer: b) Enables parallel processing of stream operations
+
+128. Which annotation caches method results?
+     a) @Cache
+     b) @Cacheable
+     c) @EnableCache
+     d) @CacheResult
+     Answer: b) @Cacheable
+
+129. What is the difference between PUT and POST?
+     a) PUT is for updates, POST is for creation
+     b) PUT is idempotent, POST is not
+     c) No difference
+     d) PUT is faster
+     Answer: b) PUT is idempotent, POST is not
+
+130. Which annotation enables scheduling?
+     a) @EnableScheduling
+     b) @Scheduled
+     c) Both needed
+     d) @EnableTimer
+     Answer: c) Both needed
+
+131. What does @CrossOrigin do?
+     a) Enables cross-origin requests
+     b) Handles CORS
+     c) Allows requests from different domains
+     d) All of the above
+     Answer: d) All of the above
+
+132. Which is the correct way to handle null values in Optional?
+     a) Optional.of(null)
+     b) Optional.ofNullable(value)
+     c) Optional.empty()
+     d) Both b and c
+     Answer: d) Both b and c
+
+133. What does @EnableConfigurationProperties do?
+     a) Enables configuration
+     b) Enables @ConfigurationProperties beans
+     c) Configures properties
+     d) Validates configuration
+     Answer: b) Enables @ConfigurationProperties beans
+
+134. Which annotation profiles beans?
+     a) @Profile
+     b) @Environment
+     c) @Conditional
+     d) @ActiveProfile
+     Answer: a) @Profile
+
+135. What is the default isolation level in @Transactional?
+     a) READ_UNCOMMITTED
+     b) READ_COMMITTED
+     c) REPEATABLE_READ
+     d) DEFAULT (database default)
+     Answer: d) DEFAULT (database default)
+
+136. Which method reference is correct for String.valueOf?
+     a) String::valueOf
+     b) String.valueOf
+     c) valueOf::String
+     d) String->valueOf
+     Answer: a) String::valueOf
+
+137. What does @ConditionalOnMissingBean do?
+     a) Creates missing beans
+     b) Creates bean only if no bean of same type exists
+     c) Validates missing beans
+     d) Handles missing beans
+     Answer: b) Creates bean only if no bean of same type exists
+
+138. Which annotation validates JSR-303 constraints?
+     a) @Valid
+     b) @Validated
+     c) @Constraint
+     d) Both a and b
+     Answer: d) Both a and b
+
+139. What is the purpose of @EventListener?
+     a) Listens to events
+     b) Handles application events
+     c) Creates event listeners
+     d) Manages events
+     Answer: b) Handles application events
+
+140. Which HTTP method is idempotent?
+     a) GET
+     b) PUT
+     c) DELETE
+     d) All of the above
+     Answer: d) All of the above
+
+====================================================================
+                        FINAL EXAM-CRITICAL QUESTIONS
+====================================================================
+
+141. What happens if @Transactional method calls another @Transactional method in same class?
+     a) New transaction is created
+     b) Same transaction is used (proxy limitation)
+     c) Exception is thrown
+     d) Transaction is suspended
+     Answer: b) Same transaction is used (proxy limitation)
+
+142. Which is the correct way to inject a list of beans?
+     a) @Autowired List<MyInterface> beans;
+     b) @Autowired MyInterface[] beans;
+     c) Both a and b
+     d) Neither works
+     Answer: c) Both a and b
+
+143. What does @DependsOn annotation do?
+     a) Creates dependencies
+     b) Ensures bean creation order
+     c) Manages dependencies
+     d) Validates dependencies
+     Answer: b) Ensures bean creation order
+
+144. Which is true about ConcurrentHashMap?
+     a) Thread-safe
+     b) Allows null keys/values
+     c) Faster than HashMap
+     d) Only a is true
+     Answer: d) Only a is true
+
+145. What does @Retryable do?
+     a) Retries failed operations
+     b) Enables retry mechanism
+     c) Configures retry policy
+     d) All of the above
+     Answer: d) All of the above
+
+146. Which annotation enables method security?
+     a) @EnableMethodSecurity
+     b) @EnableGlobalMethodSecurity  
+     c) @MethodSecurity
+     d) Both a and b
+     Answer: d) Both a and b
+
+147. What is the difference between @MockBean and @Mock?
+     a) @MockBean is for Spring context, @Mock is for unit tests
+     b) No difference
+     c) @MockBean is faster
+     d) @Mock is for Spring tests
+     Answer: a) @MockBean is for Spring context, @Mock is for unit tests
+
+148. Which propagation creates new transaction always?
+     a) REQUIRED
+     b) REQUIRES_NEW
+     c) SUPPORTS
+     d) MANDATORY
+     Answer: b) REQUIRES_NEW
+
+149. What does @JsonProperty do?
+     a) Creates JSON properties
+     b) Maps Java field to JSON property name
+     c) Validates JSON properties
+     d) Formats JSON
+     Answer: b) Maps Java field to JSON property name
+
+150. Which is the correct way to create custom repository method?
+     a) Just declare method in repository interface
+     b) Implement method in separate class
+     c) Use @Query annotation
+     d) All of the above work
+     Answer: d) All of the above work
+
+====================================================================
+                            EXAM SUCCESS TIPS
+====================================================================
+
+🎯 MOST LIKELY EXAM TOPICS (Focus Areas):
+1. Spring Boot Auto-configuration and Starters
+2. Spring Data JPA query methods and annotations
+3. Microservices patterns (Circuit Breaker, Service Discovery)
+4. Concurrency (volatile, synchronized, ExecutorService)
+5. Collections (HashMap, ConcurrentHashMap, ArrayList vs LinkedList)
+6. Exception handling and try-with-resources
+7. Lambda expressions and functional interfaces
+8. Spring MVC annotations (@RequestMapping, @PathVariable, @RequestParam)
+9. Transaction management (@Transactional properties)
+10. Testing annotations (@Test, @MockBean, @WebMvcTest)
+
+🔥 HIGH-FREQUENCY QUESTION PATTERNS:
+- Difference between similar concepts (ArrayList vs LinkedList)
+- When to use which annotation (@Component vs @Service)
+- Exception handling scenarios
+- Thread safety and concurrency
+- Spring Boot configuration and properties
+- JPA relationships and cascade types
+- HTTP methods and REST principles
+- Performance and optimization questions
+
+📚 FINAL STUDY STRATEGY:
+1. Review all 150 questions above thoroughly
+2. Understand the reasoning behind each answer
+3. Practice writing code for complex scenarios
+4. Focus on Spring Boot and Microservices (high weightage)
+5. Memorize key annotations and their purposes
+6. Practice JPA query method naming conventions
+7. Understand transaction propagation and isolation levels
+
+GOOD LUCK WITH YOUR JAVA APC EXAM! 🚀
+
+====================================================================

@@ -3,7 +3,9 @@
 ====================================================================
 
 INTRODUCTION:
-Spring Cloud Gateway is a reactive gateway built on Spring Framework 5, Project Reactor, and Spring Boot 2. It provides a simple, effective way to route to APIs and provide cross-cutting concerns such as security, monitoring/metrics, and resiliency through filters.
+Spring Cloud Gateway is a reactive gateway built on Spring Framework 5, Project Reactor, and Spring Boot 2.
+ It provides a simple, effective way to route to APIs and provide cross-cutting concerns such as security, 
+ monitoring/metrics, and resiliency through filters.
 
 KEY CONCEPTS:
 

@@ -3,7 +3,9 @@
 ====================================================================
 
 INTRODUCTION:
-Aspect-Oriented Programming (AOP) is a programming paradigm that enables separation of cross-cutting concerns from business logic. In Spring AOP, aspects are used to modularize concerns like logging, security, transaction management, and performance monitoring that cut across multiple classes and methods.
+Aspect-Oriented Programming (AOP) is a programming paradigm that enables separation of cross-cutting concerns from business logic. 
+In Spring AOP, aspects are used to modularize concerns like logging, security, transaction management, and performance monitoring 
+that cut across multiple classes and methods.
 
 KEY CONCEPTS:
 
